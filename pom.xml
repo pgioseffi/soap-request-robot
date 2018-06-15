@@ -5,6 +5,7 @@
 	<groupId>br.com.pgioseffi</groupId>
 	<artifactId>soap-request-robot</artifactId>
 	<version>1.0.0</version>
+	<description>Robô que lê arquivos XML SOAP de um determinado diretório, executa a requisição e guarda a resposta.</description>
 
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
