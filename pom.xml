@@ -5,6 +5,7 @@
 	<groupId>br.com.pgioseffi</groupId>
 	<artifactId>soap-request-robot</artifactId>
 	<version>1.0.0</version>
+	<name>Robô de Requisições SOAP</name>
 	<description>Robô que lê arquivos XML SOAP de um determinado diretório, executa a requisição e guarda a resposta.</description>
 
 	<properties>
@@ -109,7 +110,6 @@
 		</plugins>
 	</build>
 
-	<name>Robô de Requisições SOAP</name>
 	<scm>
 		<developerConnection>Philippe Gioseffi</developerConnection>
 		<url>https://github.com/pgioseffi/soap-request-robot.git</url>
