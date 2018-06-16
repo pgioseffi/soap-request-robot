@@ -48,13 +48,13 @@
 									<goal>run</goal>
 								</goals>
 								<configuration>
-									<tasks>
+									<target>
 										<delete
 											file="${project.build.outputDirectory}/configuracoes.properties" />
 										<copy
 											file="src/main/resources/configuracoes_philippe.properties"
 											tofile="${project.build.outputDirectory}/configuracoes.properties" />
-									</tasks>
+									</target>
 								</configuration>
 							</execution>
 						</executions>
