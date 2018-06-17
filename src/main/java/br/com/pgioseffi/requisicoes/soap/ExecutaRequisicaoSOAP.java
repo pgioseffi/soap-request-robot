@@ -88,14 +88,14 @@ public class ExecutaRequisicaoSOAP {
 	}
 
 	private static void singletonJob() {
-		final String caminhoArquivo = ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO;
-		final File singleton = new File(caminhoArquivo);
+		final File singleton = new File(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
 
 		if (singleton.exists()) {
 			ExecutaRequisicaoSOAP.LOGGER.error("Job em execu\u00E7\u00E3o.");
 			Runtime.getRuntime().exit(0);
 		} else {
-			try (Writer writer = new BufferedWriter(new FileWriter(caminhoArquivo))) {
+			try (Writer writer = new BufferedWriter(
+					new FileWriter(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO))) {
 				writer.write("Job em execu\u00E7\u00E3o");
 				writer.flush();
 			} catch (final IOException e) {
