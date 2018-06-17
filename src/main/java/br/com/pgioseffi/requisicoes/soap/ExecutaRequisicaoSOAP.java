@@ -200,7 +200,8 @@ public class ExecutaRequisicaoSOAP {
 			Arrays.asList(diretorio.listFiles((file) -> {
 				final String nomeArquivo = file.getName();
 				return ExecutaRequisicaoSOAP.EXTENSOES
-						.contains(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(nomeArquivo));
+						.contains(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(nomeArquivo))
+						&& System.currentTimeMillis() - file.lastModified() >= 3600000;
 			})).forEach(File::delete);
 		}
 	}
