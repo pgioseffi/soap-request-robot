@@ -335,8 +335,7 @@ public class ExecutaRequisicaoSOAP {
 			// Como dito no javadoc da classe, a extensão do arquivo é utilizada como
 			// status, então para evitarmos repetições com robôs de outros usuários, mudamos
 			// a extensão para doing.
-			final String doing = ExecutaRequisicaoSOAP.renomearArquivo(arquivo.getAbsolutePath(),
-					ExecutaRequisicaoSOAP.EXTENSAO_DOING);
+			final String doing = ExecutaRequisicaoSOAP.renomearArquivo(arquivo, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
 
 			try (BufferedReader reader = new BufferedReader(new FileReader(doing))) {
 				// Leitura do arquivo. A primeira linha contém as "configurações" do mesmo.
@@ -409,15 +408,26 @@ public class ExecutaRequisicaoSOAP {
 	}
 
 	/**
-	 * M&eacute;todo respons&aacute;vel por renomear um arquivo utilizado para uma
-	 * das extens&otilde;es reconhecidas por este rob&ocirc;.
+	 * <p>
+	 * Sobrecarga de m&eacute;todo para o m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#renomearArquivo(String, String)
+	 * renomearArquivo(String, String)} que efetivamente faz o que tem que ser
+	 * feito.
+	 * </p>
+	 * <p>
+	 * Este m&eacute;todo apenas chama o j&aacute; mencionado m&eacute;todo acima
+	 * passando os par&acirc;metros documentados.
+	 * </p>
 	 *
-	 * @param caminhoAbsolutoArquivo
-	 *            Variável do tipo {@link String} contendo o caminho absoluto do
-	 *            arquivo a ser renomeado.
+	 * @param arquivo
+	 *            Objeto do tipo {@link File} que passar&aacute; para o
+	 *            m&eacute;todo
+	 *            {@link ExecutaRequisicaoSOAP#renomearArquivo(String, String)
+	 *            renomearArquivo(String, String)} o
+	 *            {@linkplain File#getAbsolutePath() caminho absoluto} do arquivo.
 	 * @param extensaoNova
-	 *            Variável do tipo {@link String} contendo uma das extensões aceitas
-	 *            pelo robô.
+	 *            Variável do tipo {@link String} contendo uma das extens&otilde;es
+	 *            aceitas pelo rob&ocirc;.
 	 *
 	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do arquivo
 	 *         renomeado.
@@ -447,13 +457,64 @@ public class ExecutaRequisicaoSOAP {
 	 *             este m&eacute;todo para que seja tratado por quem o chamou.
 	 *
 	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
+	 * @see ExecutaRequisicaoSOAP#renomearArquivo(String, String)
+	 *      renomearArquivo(String, String)
 	 * @see String
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
 	 * @see Files#move(Path, Path, java.nio.file.CopyOption...)
+	 */
+	private static String renomearArquivo(final File arquivo, final String extensaoNova) throws IOException {
+		return ExecutaRequisicaoSOAP.renomearArquivo(arquivo.getAbsolutePath(), extensaoNova);
+	}
+
+	/**
+	 * M&eacute;todo respons&aacute;vel por renomear um arquivo utilizado para uma
+	 * das extens&otilde;es reconhecidas por este rob&ocirc;.
+	 *
+	 * @param caminhoAbsolutoArquivo
+	 *            Variável do tipo {@link String} contendo o caminho absoluto do
+	 *            arquivo a ser renomeado.
+	 * @param extensaoNova
+	 *            Variável do tipo {@link String} contendo uma das extens&otilde;es
+	 *            aceitas pelo rob&ocirc;.
+	 *
+	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do arquivo
+	 *         renomeado.
+	 *
+	 * @throws IOException
+	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
+	 *             dois motivos:
+	 *             <ul>
+	 *             <li>Pelo m&eacute;todo
+	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
+	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             este m&eacute;todo para que seja tratado por quem o chamou;</li>
+	 *             <li>Caso seja passado no par&acirc;metro
+	 *             <code><strong>extensaoNova</strong></code> um valor que
+	 *             n&atilde;o esteja definido na constante
+	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
+	 *             </ul>
+	 * @throws SecurityException
+	 *             Lan&ccedil;ada pelo m&eacute;todo
+	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
+	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             este m&eacute;todo para que seja tratado por quem o chamou.
+	 * @throws UnsupportedOperationException
+	 *             Lan&ccedil;ada pelo m&eacute;todo
+	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
+	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             este m&eacute;todo para que seja tratado por quem o chamou.
+	 *
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
 	 *      recuperarCaminhoArquivoSemExtensao(String)
+	 * @see String
+	 * @see Path
+	 * @see java.nio.file.CopyOption CopyOption
+	 * @see StandardCopyOption
+	 * @see Files#move(Path, Path, java.nio.file.CopyOption...)
 	 */
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova)
 			throws IOException {
@@ -515,7 +576,8 @@ public class ExecutaRequisicaoSOAP {
 	 * <p>
 	 * Este m&eacute;todo apenas chama o j&aacute; mencionado m&eacute;todo acima
 	 * passando a {@link String} retornada pelo m&eacute;todo
-	 * {@linkplain File#getAbsolutePath()} contendo o caminho absoluto do arquivo.
+	 * {@linkplain File#getAbsolutePath()} contendo o caminho absoluto do arquivo,
+	 * atrav&eacute;s do par&acirc;metro documentado.
 	 * </p>
 	 *
 	 * @param arquivo
@@ -528,7 +590,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do
 	 *         {@link File arquivo} sem a sua extens&atilde;o.
 	 *
-	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(String)
+	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
 	 * @see String
 	 * @see File#getAbsolutePath()
 	 */
