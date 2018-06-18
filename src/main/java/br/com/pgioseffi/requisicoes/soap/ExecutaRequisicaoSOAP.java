@@ -12,7 +12,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -392,7 +391,11 @@ public class ExecutaRequisicaoSOAP {
 				final String[] headers = configuracoes.split(";");
 				if (headers.length > 1) {
 					mimeHeaders = new MimeHeaders();
+
+					// Recupera a URL.
 					url = headers[0];
+
+					// Recupera e encoda em Base64 o login e a senha.
 					mimeHeaders.addHeader("Authorization",
 							"Basic " + Base64.encodeBase64String(headers[1].getBytes(StandardCharsets.UTF_8)));
 				} else {
@@ -555,8 +558,8 @@ public class ExecutaRequisicaoSOAP {
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
-	 * @see Files#move(Path, Path, CopyOption...) Files#move(Path, Path,
-	 *      CopyOption...)
+	 * @see Files#move(Path, Path, java.nio.file.CopyOption...) Files#move(Path,
+	 *      Path, CopyOption...)
 	 */
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova)
 			throws IOException {
@@ -633,6 +636,7 @@ public class ExecutaRequisicaoSOAP {
 	 *         {@link File arquivo} sem a sua extens&atilde;o.
 	 *
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
+	 *      recuperarCaminhoArquivoSemExtensao(String)
 	 * @see String
 	 * @see File#getAbsolutePath()
 	 */
@@ -652,6 +656,7 @@ public class ExecutaRequisicaoSOAP {
 	 *         {@link File arquivo} sem a sua extens&atilde;o.
 	 *
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(File)
+	 *      recuperarCaminhoArquivoSemExtensao(File)
 	 * @see String
 	 * @see String#lastIndexOf(int)
 	 * @see String#substring(int, int)
