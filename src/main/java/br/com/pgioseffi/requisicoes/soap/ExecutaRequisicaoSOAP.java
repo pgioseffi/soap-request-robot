@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -500,7 +501,8 @@ public class ExecutaRequisicaoSOAP {
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
-	 * @see Files#move(Path, Path, java.nio.file.CopyOption...)
+	 * @see Files#move(Path, Path, java.nio.file.CopyOption...) Files#move(Path,
+	 *      Path, CopyOption...)
 	 */
 	private static String renomearArquivo(final File arquivo, final String extensaoNova) throws IOException {
 		return ExecutaRequisicaoSOAP.renomearArquivo(arquivo.getAbsolutePath(), extensaoNova);
@@ -547,11 +549,14 @@ public class ExecutaRequisicaoSOAP {
 	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
 	 *      recuperarCaminhoArquivoSemExtensao(String)
+	 * @see ExecutaRequisicaoSOAP#renomearArquivo(File, String)
+	 *      renomearArquivo(File, String)
 	 * @see String
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
-	 * @see Files#move(Path, Path, java.nio.file.CopyOption...)
+	 * @see Files#move(Path, Path, CopyOption...) Files#move(Path, Path,
+	 *      CopyOption...)
 	 */
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova)
 			throws IOException {
@@ -646,6 +651,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do
 	 *         {@link File arquivo} sem a sua extens&atilde;o.
 	 *
+	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(File)
 	 * @see String
 	 * @see String#lastIndexOf(int)
 	 * @see String#substring(int, int)
