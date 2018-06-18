@@ -34,6 +34,12 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
 import org.apache.log4j.Logger;
 
+/**
+ *
+ * @author <a href="mailto:pgioseffi@gmail.com">Philippe Gioseffi
+ *         &lt;pgioseffi@gmail.com&gt;</a>
+ *
+ */
 public class ExecutaRequisicaoSOAP {
 
 	private static final String EXTENSAO_RESPONSE = ".RESPONSE";
