@@ -512,19 +512,23 @@ public class ExecutaRequisicaoSOAP {
 	 */
 	// TODO: Validar se arquivo é arquivo e não diretório.
 	private static String recuperarCaminhoArquivoSemExtensao(final String caminhoAbsolutoArquivo) {
+		// Retorna o caminho absoluto sem a extensão fazendo uma busca do início da
+		// String até a posição do último ponto encontrado.
 		return caminhoAbsolutoArquivo.substring(0, caminhoAbsolutoArquivo.lastIndexOf('.'));
 	}
 
 	/**
 	 * M&eacute;todo respons&aacute;vel por dado o caminho absoluto de um arquivo,
-	 * retornar sua extens&atilde;o.
+	 * retornar sua extens&atilde;o com o s&iacute;mbolo de
+	 * &quot;<code><strong>.</strong></code>&quot;.
 	 *
 	 * @param arquivo
 	 *            Objeto do tipo {@link String} contendo o caminho absoluto de um
 	 *            arquivo.
 	 *
 	 * @return Objeto do tipo {@link String} contendo apenas a extens&atilde;o deste
-	 *         mesmo arquivo.
+	 *         mesmo arquivo com o s&iacute;mbolo de
+	 *         &quot;<code><strong>.</strong></code>&quot;.
 	 *
 	 * @see String
 	 * @see String#lastIndexOf(int)
