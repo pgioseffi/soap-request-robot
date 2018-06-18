@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.List;
+import java.util.Collection;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -86,9 +86,9 @@ import org.apache.log4j.Logger;
  * @see SOAPMessage
  * @see MimeHeaders
  * @see Properties
- * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING
- * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE
- * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
  */
 public class ExecutaRequisicaoSOAP {
 
@@ -96,9 +96,9 @@ public class ExecutaRequisicaoSOAP {
 	 * Constante utilizada para a manipula&ccedil;&atilde;o de arquivos do tipo
 	 * <code>RESPONSE</code>.
 	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_RESPONSE = ".RESPONSE";
 
@@ -106,9 +106,9 @@ public class ExecutaRequisicaoSOAP {
 	 * Constante utilizada para a manipula&ccedil;&atilde;o de arquivos do tipo
 	 * <code>DONE</code>.
 	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_DONE = ".DONE";
 
@@ -116,22 +116,24 @@ public class ExecutaRequisicaoSOAP {
 	 * Constante utilizada para a manipula&ccedil;&atilde;o de arquivos do tipo
 	 * <code>DOING</code>.
 	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_DOING = ".DOING";
 
 	/**
 	 * Constante utilizada para a manipula&ccedil;&atilde;o das extens&otilde;es que
-	 * servem como &quot;status&quot deste rob&ocirc;.
+	 * servem como &quot;status&quot deste rob&ocirc; atrav&eacute;s das constantes
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE},
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING} e
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE}.
 	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
 	 */
-	// TODO: Usar Collection ao invés de List.
-	private static final List<String> EXTENSOES = Arrays.asList(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE,
+	private static final Collection<String> EXTENSOES = Arrays.asList(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE,
 			ExecutaRequisicaoSOAP.EXTENSAO_DONE, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
 
 	/**
@@ -146,8 +148,9 @@ public class ExecutaRequisicaoSOAP {
 	 * da classe.
 	 *
 	 * @see Properties
-	 * @see ExecutaRequisicaoSOAP#DIRETORIO
+	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
 	 * @see ExecutaRequisicaoSOAP#CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO
+	 *      CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO
 	 */
 	private static final Properties ARQUIVO_PROPERTIES = new Properties();
 
@@ -174,7 +177,7 @@ public class ExecutaRequisicaoSOAP {
 	 * serem feitas em formato de envelope SOAP.
 	 *
 	 * @see Properties
-	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES
+	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES ARQUIVO_PROPERTIES
 	 */
 	private static final String DIRETORIO = ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("diretorio");
 
@@ -184,13 +187,15 @@ public class ExecutaRequisicaoSOAP {
 	 * determinado usu&aacute;rio.
 	 *
 	 * @see Properties
-	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES
+	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES ARQUIVO_PROPERTIES
 	 */
 	private static final String CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO = ExecutaRequisicaoSOAP.DIRETORIO
 			+ File.separatorChar
 			+ ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("nome.arquivo.controle.execucao");
 
-	// TODO: Construir construtor padrão privado para inibir instância desta classe.
+	private ExecutaRequisicaoSOAP() {
+		super();
+	}
 
 	/**
 	 * M&eacute;todo de entrada do rob&ocirc;. Este m&eacute;todo inicia a
@@ -202,9 +207,9 @@ public class ExecutaRequisicaoSOAP {
 	 *            especifica&ccedil;&atilde;o Java para classes que sejam iniciadas
 	 *            com m&eacute;todos <code>main</code>.
 	 *
-	 * @see ExecutaRequisicaoSOAP#executarRequisicao()
-	 * @see ExecutaRequisicaoSOAP#excluirArquivos()
-	 * @see ExecutaRequisicaoSOAP#singletonJob()
+	 * @see ExecutaRequisicaoSOAP#executarRequisicao() executarRequisicao()
+	 * @see ExecutaRequisicaoSOAP#excluirArquivos() excluirArquivos()
+	 * @see ExecutaRequisicaoSOAP#singletonJob() singletonJob()
 	 */
 	public static void main(final String[] args) {
 		ExecutaRequisicaoSOAP.LOGGER.info("Iniciando atividade de execu\u00E7\u00E3o agendada do rob\u00F3.");
@@ -243,15 +248,15 @@ public class ExecutaRequisicaoSOAP {
 	 * controle.
 	 */
 	private static void singletonJob() {
+		final String mensagem = "Job em execu\u00E7\u00E3o.";
+
 		// Iniciando arquivo de controle.
 		final File singleton = new File(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
 
 		if (singleton.exists()) {
 			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
 			// saia.
-			// TODO: Extrair para variável mensagem abaixo, visto que a mesma é utilizada em
-			// mais de um local.
-			ExecutaRequisicaoSOAP.LOGGER.error("Job em execu\u00E7\u00E3o.");
+			ExecutaRequisicaoSOAP.LOGGER.error(mensagem);
 
 			// Sai da execução sinalizando condição aceitável.
 			Runtime.getRuntime().exit(0);
@@ -259,7 +264,7 @@ public class ExecutaRequisicaoSOAP {
 			// Senão estiver sendo executado, crie um arquivo com uma mensagem padrão.
 			try (Writer writer = new BufferedWriter(
 					new FileWriter(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO))) {
-				writer.write("Job em execu\u00E7\u00E3o.");
+				writer.write(mensagem);
 				writer.flush();
 			} catch (final IOException e) {
 				ExecutaRequisicaoSOAP.LOGGER.error(
@@ -275,7 +280,8 @@ public class ExecutaRequisicaoSOAP {
 	 * M&eacute;todo respons&aacute;vel por varrer o diret&oacute;rio com os
 	 * arquivos do tipo <code>PENDING</code> e executar a requisi&ccedil;&atilde;o.
 	 *
-	 * @see ExecutaRequisicaoSOAP#constroiArquivosESubmeteRequisicao(File)
+	 * @see ExecutaRequisicaoSOAP#construirArquivosESubmeteRequisicao(File)
+	 *      construirArquivosESubmeteRequisicao(File)
 	 */
 	private static void executarRequisicao() {
 		ExecutaRequisicaoSOAP.LOGGER.info("Entrando na rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: "
@@ -296,7 +302,7 @@ public class ExecutaRequisicaoSOAP {
 							+ arquivos.length);
 
 			// Varre a lista de arquivos encontrados e submete a requisição.
-			Arrays.asList(arquivos).forEach(f -> ExecutaRequisicaoSOAP.constroiArquivosESubmeteRequisicao(f));
+			Arrays.asList(arquivos).forEach(f -> ExecutaRequisicaoSOAP.construirArquivosESubmeteRequisicao(f));
 		}
 	}
 
@@ -314,7 +320,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @see OutputStream
 	 * @see SOAPMessage
 	 */
-	private static void constroiArquivosESubmeteRequisicao(final File arquivo) {
+	private static void construirArquivosESubmeteRequisicao(final File arquivo) {
 		try {
 			final StringBuilder corpoRequisicao = new StringBuilder();
 			String configuracoes = null;
@@ -335,6 +341,8 @@ public class ExecutaRequisicaoSOAP {
 				// para o próximo.
 				// TODO: Logar.
 				if (StringUtils.isBlank(configuracoes)) {
+					ExecutaRequisicaoSOAP.LOGGER
+							.error("Arquivo inválido, pois não contém as configurações da requisição SOAP.");
 					return;
 				}
 
@@ -410,22 +418,46 @@ public class ExecutaRequisicaoSOAP {
 	 *         renomeado.
 	 *
 	 * @throws IOException
-	 *             Exce&ccedil;&atilde;o lan&ccedil;ada pelo m&eacute;todo
+	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
+	 *             dois motivos:
+	 *             <ul>
+	 *             <li>Pelo m&eacute;todo
+	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
+	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             este m&eacute;todo para que seja tratado por quem o chamou;</li>
+	 *             <li>Caso seja passado no par&acirc;metro
+	 *             <code><strong>extensaoNova</strong></code> um valor que
+	 *             n&atilde;o esteja definido na constante
+	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
+	 *             </ul>
+	 * @throws SecurityException
+	 *             Lan&ccedil;ada pelo m&eacute;todo
+	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
+	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             este m&eacute;todo para que seja tratado por quem o chamou.
+	 * @throws UnsupportedOperationException
+	 *             Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
 	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
 	 *             este m&eacute;todo para que seja tratado por quem o chamou.
 	 *
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 * @see String
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
 	 * @see Files#move(Path, Path, java.nio.file.CopyOption...)
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
+	 *      recuperarCaminhoArquivoSemExtensao(String)
 	 */
 	// TODO: Fazer verificação se parâmetro extensaoNova é um dos aceitáveis pelo
 	// robô.
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova)
 			throws IOException {
+		if (!ExecutaRequisicaoSOAP.EXTENSOES.contains(extensaoNova)) {
+			throw new IOException("Deu ruim chefe.");
+		}
+
 		// Recuperando caminho do arquivo a ser renomeado.
 		final Path origem = Paths.get(caminhoAbsolutoArquivo);
 
@@ -446,8 +478,9 @@ public class ExecutaRequisicaoSOAP {
 	 * h&aacute; mais de uma hora.
 	 *
 	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(String)
-	 * @see ExecutaRequisicaoSOAP#DIRETORIO
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES
+	 *      recuperarExtensaoArquivo(String)
+	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 * @see File#lastModified()
 	 * @see File#delete()
 	 * @see System#currentTimeMillis()
