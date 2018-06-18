@@ -18,6 +18,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -37,9 +38,10 @@ import org.apache.log4j.Logger;
 /**
  * <p>
  * Classe respons&aacute;vel por executar requisi&ccedil;&otilde;es SOAP a cada
- * cinco segundos atrav&eacute;s da leitura de um arquivo <code>PENDING</code>
- * com conte&uacute;do XML com um envelope SOAP v&aacute;lido e manter por uma
- * hora a resposta desta mesma requisi&ccedil;&atilde;o em um arquivo
+ * cinco segundos atrav&eacute;s da leitura de um arquivo
+ * {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING PENDING} com conte&uacute;do
+ * XML com um envelope SOAP v&aacute;lido e manter por uma hora a resposta desta
+ * mesma requisi&ccedil;&atilde;o em um arquivo
  * {@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE RESPONSE}.
  * </p>
  * <p>
@@ -52,7 +54,8 @@ import org.apache.log4j.Logger;
  * arquivos modificando suas extens&otilde;es conforme abaixo, os utilizando
  * como &quot;status&quot:
  * <ul>
- * <li>PENDING: Arquivos com requisi&ccedil;&otilde;es pendentes;</li>
+ * <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING PENDING}: Arquivos com
+ * requisi&ccedil;&otilde;es pendentes;</li>
  * <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_DOING DOING}: Arquivos com
  * requisi&ccedil;&otilde;es em andamento;</li>
  * <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_DONE DONE}: Arquivos originais com
@@ -93,6 +96,21 @@ import org.apache.log4j.Logger;
 public class ExecutaRequisicaoSOAP {
 
 	/**
+	 * <p>
+	 * Constante utilizada para a manipula&ccedil;&atilde;o de arquivos do tipo
+	 * <code>PENDING</code>.
+	 * </p>
+	 * <p>
+	 * Esta &eacute; a &uacute;nica constante pela qual o rob&ocirc; n&atilde;o
+	 * &eacute; diretamente respons&aacute;vel, por isso n&atilde;o deve ser
+	 * inserida na lista de {@linkplain ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.
+	 * </p>
+	 *
+	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
+	 */
+	private static final String EXTENSAO_PENDING = ".PENDING";
+
+	/**
 	 * Constante utilizada para a manipula&ccedil;&atilde;o de arquivos do tipo
 	 * <code>RESPONSE</code>.
 	 *
@@ -123,18 +141,34 @@ public class ExecutaRequisicaoSOAP {
 	private static final String EXTENSAO_DOING = ".DOING";
 
 	/**
+	 * <p>
 	 * Constante utilizada para a manipula&ccedil;&atilde;o das extens&otilde;es que
 	 * servem como &quot;status&quot deste rob&ocirc; atrav&eacute;s das constantes
 	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE},
 	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING} e
 	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE}.
+	 * </p>
+	 * <p>
+	 * Tais extens&otilde;es mencionadas acima n&atilde;o contemplam a constante
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING} pelo motivo
+	 * explicitado no Javadoc da pr&oacute;pria constante.
+	 * </p>
+	 * <p>
+	 * Esta constante foi criada utilizando
+	 * {@link Collections#unmodifiableCollection(Collection)} de maneira que
+	 * n&atilde;o possa ser modificada em tempo de execu&ccedil;&atilde;o.
+	 * </p>
 	 *
+	 * @see Arrays#asList(Object...)
+	 * @see Collections#unmodifiableCollectionCollection)
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
 	 */
-	private static final Collection<String> EXTENSOES = Arrays.asList(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE,
-			ExecutaRequisicaoSOAP.EXTENSAO_DONE, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
+	private static final Collection<String> EXTENSOES = Collections
+			.unmodifiableList(Arrays.asList(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE,
+					ExecutaRequisicaoSOAP.EXTENSAO_DONE, ExecutaRequisicaoSOAP.EXTENSAO_DOING));
 
 	/**
 	 * Constante utilizada para manter o {@link Logger log} da classe.
@@ -173,10 +207,11 @@ public class ExecutaRequisicaoSOAP {
 
 	/**
 	 * Constante utilizada para manter o diret&oacute;rio a ser varrido em busca de
-	 * arquivos do tipo <code>PENDING</code> com as requisi&ccedil;&otilde;es a
-	 * serem feitas em formato de envelope SOAP.
+	 * arquivos do tipo {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING PENDING} com
+	 * as requisi&ccedil;&otilde;es a serem feitas em formato de envelope SOAP.
 	 *
 	 * @see Properties
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
 	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES ARQUIVO_PROPERTIES
 	 */
 	private static final String DIRETORIO = ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("diretorio");
@@ -277,9 +312,11 @@ public class ExecutaRequisicaoSOAP {
 	}
 
 	/**
-	 * M&eacute;todo respons&aacute;vel por varrer o diret&oacute;rio com os
-	 * arquivos do tipo <code>PENDING</code> e executar a requisi&ccedil;&atilde;o.
+	 * M&eacute;todo respons&aacute;vel por varrer o diret&oacute;rio em busca de
+	 * arquivos do tipo {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING PENDING} e
+	 * executar a requisi&ccedil;&atilde;o.
 	 *
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
 	 * @see ExecutaRequisicaoSOAP#construirArquivosESubmeterRequisicao(File)
 	 *      construirArquivosESubmeteRequisicao(File)
 	 * @see File
@@ -299,8 +336,8 @@ public class ExecutaRequisicaoSOAP {
 
 			// Buscando no diretório apenas arquivos do tipo ".PENDING" e que sejam arquivos
 			// e não diretórios.
-			final File[] arquivos = dir.listFiles(file -> file.isFile()
-					&& ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName()).equalsIgnoreCase(".PENDING"));
+			final File[] arquivos = dir.listFiles(file -> file.isFile() && ExecutaRequisicaoSOAP
+					.recuperarExtensaoArquivo(file.getName()).equalsIgnoreCase(ExecutaRequisicaoSOAP.EXTENSAO_PENDING));
 
 			ExecutaRequisicaoSOAP.LOGGER.info(
 					"VERIFICANDO SE EXISTEM ARQUIVOS ELEG\u00CDVEIS PARA A ROTINA DE EXECU\u00C7\u00C3O DA REQUISI\u00C7\u00C3O SOAP.\nQuantidade de arquivo(s) para processar: "
