@@ -280,8 +280,12 @@ public class ExecutaRequisicaoSOAP {
 	 * M&eacute;todo respons&aacute;vel por varrer o diret&oacute;rio com os
 	 * arquivos do tipo <code>PENDING</code> e executar a requisi&ccedil;&atilde;o.
 	 *
-	 * @see ExecutaRequisicaoSOAP#construirArquivosESubmeteRequisicao(File)
+	 * @see ExecutaRequisicaoSOAP#construirArquivosESubmeterRequisicao(File)
 	 *      construirArquivosESubmeteRequisicao(File)
+	 * @see File
+	 * @see File#getName()
+	 * @see File#isFile()
+	 * @see File#listFiles(java.io.FileFilter) File#listFiles(FileFilter)
 	 */
 	private static void executarRequisicao() {
 		ExecutaRequisicaoSOAP.LOGGER.info("Entrando na rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: "
@@ -293,16 +297,17 @@ public class ExecutaRequisicaoSOAP {
 		if (dir.exists()) {
 			ExecutaRequisicaoSOAP.LOGGER.info("VERIFICANDO  DIRET\u00D3RIO: " + dir.getAbsolutePath());
 
-			// Buscando no diretório apenas arquivos do tipo ".PENDING".
-			final File[] arquivos = dir.listFiles((diretorio, name) -> ExecutaRequisicaoSOAP
-					.recuperarExtensaoArquivo(name).equalsIgnoreCase(".PENDING"));
+			// Buscando no diretório apenas arquivos do tipo ".PENDING" e que sejam arquivos
+			// e não diretórios.
+			final File[] arquivos = dir.listFiles(file -> file.isFile()
+					&& ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName()).equalsIgnoreCase(".PENDING"));
 
 			ExecutaRequisicaoSOAP.LOGGER.info(
 					"VERIFICANDO SE EXISTEM ARQUIVOS ELEG\u00CDVEIS PARA A ROTINA DE EXECU\u00C7\u00C3O DA REQUISI\u00C7\u00C3O SOAP.\nQuantidade de arquivo(s) para processar: "
 							+ arquivos.length);
 
 			// Varre a lista de arquivos encontrados e submete a requisição.
-			Arrays.asList(arquivos).forEach(f -> ExecutaRequisicaoSOAP.construirArquivosESubmeteRequisicao(f));
+			Arrays.asList(arquivos).forEach(f -> ExecutaRequisicaoSOAP.construirArquivosESubmeterRequisicao(f));
 		}
 	}
 
@@ -320,7 +325,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @see OutputStream
 	 * @see SOAPMessage
 	 */
-	private static void construirArquivosESubmeteRequisicao(final File arquivo) {
+	private static void construirArquivosESubmeterRequisicao(final File arquivo) {
 		try {
 			final StringBuilder corpoRequisicao = new StringBuilder();
 			String configuracoes = null;
@@ -339,10 +344,9 @@ public class ExecutaRequisicaoSOAP {
 
 				// Senão tivermos configurações o arquivo é inválido. Devemos avisar e seguir
 				// para o próximo.
-				// TODO: Logar.
 				if (StringUtils.isBlank(configuracoes)) {
-					ExecutaRequisicaoSOAP.LOGGER
-							.error("Arquivo inválido, pois não contém as configurações da requisição SOAP.");
+					ExecutaRequisicaoSOAP.LOGGER.error(
+							"Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m as configura\u00E7\u00F5es da requisi\u00E7\u00E3o SOAP.");
 					return;
 				}
 
@@ -367,8 +371,9 @@ public class ExecutaRequisicaoSOAP {
 
 			// Senão tivermos corpo da requisição o arquivo é inválido. Devemos avisar e
 			// seguir para o próximo.
-			// TODO: Logar.
 			if (corpoRequisicao.length() == 0) {
+				ExecutaRequisicaoSOAP.LOGGER.error(
+						"Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m o corpo (envelope SOAP) da requisi\u00E7\u00E3o SOAP.");
 				return;
 			}
 
@@ -381,9 +386,9 @@ public class ExecutaRequisicaoSOAP {
 			final SOAPMessage response = SOAPConnectionFactory.newInstance().createConnection().call(message,
 					url.trim());
 
-			// Escreve a resposta num stream.
 			// TODO: Verificar possibilidade de utilizar FileOutputStream e eliminar
 			// overhead no filewriter abaixo.
+			// Escreve a resposta num stream.
 			final OutputStream out = new ByteArrayOutputStream();
 			response.writeTo(out);
 
@@ -450,12 +455,11 @@ public class ExecutaRequisicaoSOAP {
 	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
 	 *      recuperarCaminhoArquivoSemExtensao(String)
 	 */
-	// TODO: Fazer verificação se parâmetro extensaoNova é um dos aceitáveis pelo
-	// robô.
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova)
 			throws IOException {
 		if (!ExecutaRequisicaoSOAP.EXTENSOES.contains(extensaoNova)) {
-			throw new IOException("Deu ruim chefe.");
+			throw new IOException(
+					"Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP#renomearArquivo(String, String).");
 		}
 
 		// Recuperando caminho do arquivo a ser renomeado.
@@ -481,8 +485,12 @@ public class ExecutaRequisicaoSOAP {
 	 *      recuperarExtensaoArquivo(String)
 	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
 	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
+	 * @see File
 	 * @see File#lastModified()
 	 * @see File#delete()
+	 * @see File#getName()
+	 * @see File#isFile()
+	 * @see File#listFiles(java.io.FileFilter) File#listFiles(FileFilter)
 	 * @see System#currentTimeMillis()
 	 */
 	private static void excluirArquivos() {
@@ -492,7 +500,7 @@ public class ExecutaRequisicaoSOAP {
 			// Se o diretório existir, recupero os arquivos do tipo definido pela constante
 			// criado há mais de uma hora, transformo numa lista e excluo.
 			Arrays.asList(diretorio.listFiles((file) -> ExecutaRequisicaoSOAP.EXTENSOES
-					.contains(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName()))
+					.contains(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName())) && file.isFile()
 					&& System.currentTimeMillis() - file.lastModified() >= 3600000)).forEach(File::delete);
 		}
 	}
@@ -543,7 +551,6 @@ public class ExecutaRequisicaoSOAP {
 	 * @see String#lastIndexOf(int)
 	 * @see String#substring(int, int)
 	 */
-	// TODO: Validar se arquivo é arquivo e não diretório.
 	private static String recuperarCaminhoArquivoSemExtensao(final String caminhoAbsolutoArquivo) {
 		// Retorna o caminho absoluto sem a extensão fazendo uma busca do início da
 		// String até a posição do último ponto encontrado.
@@ -567,7 +574,6 @@ public class ExecutaRequisicaoSOAP {
 	 * @see String#lastIndexOf(int)
 	 * @see String#substring(int, int)
 	 */
-	// TODO: Validar se arquivo é arquivo e não diretório.
 	private static String recuperarExtensaoArquivo(final String nomeArquivo) {
 		return nomeArquivo.substring(nomeArquivo.lastIndexOf('.'));
 	}
