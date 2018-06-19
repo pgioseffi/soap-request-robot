@@ -442,7 +442,7 @@ public class ExecutaRequisicaoSOAP {
 				writer.write(out.toString());
 				writer.flush();
 			}
-		} catch (final IOException | SOAPException e) {
+		} catch (final IOException | SOAPException | RuntimeException e) {
 			ExecutaRequisicaoSOAP.LOGGER
 					.error("Erro inesperado ao executar requisiu\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
 		}
