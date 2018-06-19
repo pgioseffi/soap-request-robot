@@ -476,7 +476,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @throws IOException
 	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
 	 *             dois motivos:
-	 *             <ul>
+	 *             <ol>
 	 *             <li>Pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
 	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
@@ -485,7 +485,7 @@ public class ExecutaRequisicaoSOAP {
 	 *             <code><strong>extensaoNova</strong></code> um valor que
 	 *             n&atilde;o esteja definido na constante
 	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
-	 *             </ul>
+	 *             </ol>
 	 * @throws SecurityException
 	 *             Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
@@ -528,7 +528,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @throws IOException
 	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
 	 *             dois motivos:
-	 *             <ul>
+	 *             <ol>
 	 *             <li>Pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
 	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
@@ -537,7 +537,7 @@ public class ExecutaRequisicaoSOAP {
 	 *             <code><strong>extensaoNova</strong></code> um valor que
 	 *             n&atilde;o esteja definido na constante
 	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
-	 *             </ul>
+	 *             </ol>
 	 * @throws SecurityException
 	 *             Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
