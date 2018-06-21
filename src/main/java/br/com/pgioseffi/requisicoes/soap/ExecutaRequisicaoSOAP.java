@@ -3,25 +3,30 @@ package br.com.pgioseffi.requisicoes.soap;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.RandomAccessFile;
 import java.io.Writer;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
+import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Locale;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import javax.xml.soap.MessageFactory;
 import javax.xml.soap.MimeHeaders;
@@ -82,15 +87,31 @@ import org.apache.log4j.Logger;
  *
  * @since 1.0.0
  *
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+ * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
+ * @see Runtime
+ * @see Runtime#getRuntime()
+ * @see Runtime#addShutdownHook(Thread)
  * @see Thread
  * @see Runnable
  * @see ScheduledExecutorService
  * @see SOAPMessage
  * @see MimeHeaders
  * @see Properties
- * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
- * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
- * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
+ * @see Files
+ * @see Files#list(Path)
+ * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
+ *      Files.isRegularFile(Path, LinkOption...)
+ * @see Files#newBufferedReader(Path, java.nio.charset.Charset)
+ *      Files.newBufferedReader(Path, Charset)
+ * @see Path
+ * @see Stream
+ * @see Stream#collect(java.util.stream.Collector) Stream.collect(Collector)
+ * @see Collectors
+ * @see Collectors#toCollection(java.util.function.Supplier)
+ *      Collectors.toCollection(Supplier)
  */
 public class ExecutaRequisicaoSOAP {
 
@@ -101,11 +122,8 @@ public class ExecutaRequisicaoSOAP {
 	 * </p>
 	 * <p>
 	 * Esta &eacute; a &uacute;nica constante pela qual o rob&ocirc; n&atilde;o
-	 * &eacute; diretamente respons&aacute;vel, por isso n&atilde;o deve ser
-	 * inserida na lista de {@linkplain ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.
+	 * &eacute; diretamente respons&aacute;vel.
 	 * </p>
-	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_PENDING = ".PENDING";
 
@@ -115,7 +133,6 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_RESPONSE = ".RESPONSE";
 
@@ -125,7 +142,6 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_DONE = ".DONE";
 
@@ -135,7 +151,6 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
 	 */
 	private static final String EXTENSAO_DOING = ".DOING";
 
@@ -152,8 +167,6 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see Properties
 	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
-	 * @see ExecutaRequisicaoSOAP#CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO
-	 *      CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO
 	 */
 	private static final Properties ARQUIVO_PROPERTIES = new Properties();
 
@@ -197,6 +210,44 @@ public class ExecutaRequisicaoSOAP {
 	private static final Path CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO = ExecutaRequisicaoSOAP.DIRETORIO
 			.resolve(ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("nome.arquivo.controle.execucao"));
 
+	private static final FileLock LOCK = ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControleSegundaFase();
+
+	public static RandomAccessFile adquirirBloqueioArquivoControlePrimeiraFase() throws IOException {
+		final String mensagem = "Job em execu\u00E7\u00E3o pelo usu\u00E1rio "
+				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(Locale.getDefault());
+
+		if (Files.exists(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO)) {
+			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
+			// saia.
+			ExecutaRequisicaoSOAP.LOGGER.error(mensagem);
+
+			// Sai da execução sinalizando condição aceitável.
+			Runtime.getRuntime().exit(0);
+		}
+
+		if (!Files.exists(ExecutaRequisicaoSOAP.DIRETORIO)) {
+			Files.createDirectory(ExecutaRequisicaoSOAP.DIRETORIO);
+		}
+
+		return new RandomAccessFile(
+				Files.write(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO, mensagem.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.WRITE).toFile(),
+				"rw");
+	}
+
+	public static FileLock adquirirBloqueioArquivoControleSegundaFase() {
+		try {
+			return ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControlePrimeiraFase().getChannel().lock(0, Long.MAX_VALUE, false);
+		} catch (final Throwable e) {
+			ExecutaRequisicaoSOAP.LOGGER.error("Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
+			System.exit(-1);
+			return null;
+		}
+	}
+
+	/**
+	 * Construtor padr&atilde;o de maneira a evitar instancia&ccedil;&atilde;o da
+	 * classe.
+	 */
 	private ExecutaRequisicaoSOAP() {
 		super();
 	}
@@ -213,27 +264,33 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see ExecutaRequisicaoSOAP#executarRequisicao() executarRequisicao()
 	 * @see ExecutaRequisicaoSOAP#excluirArquivos() excluirArquivos()
-	 * @see ExecutaRequisicaoSOAP#singletonJob() singletonJob()
+	 * @see Runtime
+	 * @see Runtime#getRuntime()
+	 * @see Runtime#addShutdownHook(Thread)
 	 */
 	public static void main(final String[] args) {
-		ExecutaRequisicaoSOAP.LOGGER.info("Iniciando atividade de execu\u00E7\u00E3o agendada do rob\u00F3.");
-
-		// Chama o método que garante que este robô será executado apenas por um
-		// usuário.
-		ExecutaRequisicaoSOAP.singletonJob();
+		ExecutaRequisicaoSOAP.LOGGER.info("Iniciando atividade de execu\u00E7\u00E3o agendada do rob\u00F4.");
 
 		// Instrução para a JVM realizar os passos abaixo de exclusão de arquivos ao fim
 		// da execução do job.
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-			try {
-				Files.delete(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
-			} catch (final IOException e) {
-				ExecutaRequisicaoSOAP.LOGGER.error("Erro ao excluir arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
-			}
 
 			// Excluir arquivos do tipo done, response e doing (este caso não deve ocorrer)
 			// do diretório.
 			ExecutaRequisicaoSOAP.excluirArquivos();
+
+			try {
+				ExecutaRequisicaoSOAP.LOCK.release();
+
+				Files.delete(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
+
+				// Se for a última instância do robô a utilizar o diretório, posso apagá-lo.
+				if (Files.list(ExecutaRequisicaoSOAP.DIRETORIO).count() == 0L) {
+					Files.delete(ExecutaRequisicaoSOAP.DIRETORIO);
+				}
+			} catch (final IOException e) {
+				ExecutaRequisicaoSOAP.LOGGER.error("Erro ao excluir arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
+			}
 		}));
 
 		// Scheduler responsável por iniciar os agendamentos para as requisições SOAP e
@@ -246,239 +303,124 @@ public class ExecutaRequisicaoSOAP {
 	}
 
 	/**
-	 * M&eacute;todo respons&aacute;vel por garantir que este rob&ocirc; seja
-	 * executado apenas uma vez por usu&aacute;rio atrav&eacute;s de um arquivo de
-	 * controle.
-	 */
-	private static void singletonJob() {
-		final String mensagem = "Job em execu\u00E7\u00E3o.";
-
-		// Iniciando arquivo de controle.
-		final File singleton = ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO.toFile();
-
-		if (singleton.exists()) {
-			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
-			// saia.
-			ExecutaRequisicaoSOAP.LOGGER.error(mensagem);
-
-			// Sai da execução sinalizando condição aceitável.
-			Runtime.getRuntime().exit(0);
-		} else {
-			// Senão estiver sendo executado, crie um arquivo com uma mensagem padrão.
-			try (Writer writer = new BufferedWriter(new FileWriter(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO.toString()))) {
-				writer.write(mensagem);
-				writer.flush();
-			} catch (final IOException e) {
-				ExecutaRequisicaoSOAP.LOGGER.error("Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
-
-				// Sai da execução sinalizando erro.
-				Runtime.getRuntime().exit(-1);
-			}
-		}
-	}
-
-	/**
 	 * M&eacute;todo respons&aacute;vel por varrer o diret&oacute;rio em busca de
 	 * arquivos do tipo {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING PENDING} e
 	 * executar a requisi&ccedil;&atilde;o.
 	 *
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
-	 * @see ExecutaRequisicaoSOAP#construirArquivosESubmeterRequisicao(File)
-	 *      construirArquivosESubmeteRequisicao(File)
-	 * @see File
-	 * @see File#getName()
-	 * @see File#isFile()
-	 * @see File#listFiles(java.io.FileFilter) File#listFiles(FileFilter)
+	 * @see Files
+	 * @see Files#list(Path)
+	 * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
+	 *      Files.isRegularFile(Path, LinkOption...)
+	 * @see Files#newBufferedReader(Path, java.nio.charset.Charset)
+	 *      Files.newBufferedReader(Path, Charset)
+	 * @see Path
+	 * @see Stream
+	 * @see Stream#collect(java.util.stream.Collector) Stream.collect(Collector)
+	 * @see Collectors
+	 * @see Collectors#toCollection(java.util.function.Supplier)
+	 *      Collectors.toCollection(Supplier)
 	 */
 	private static void executarRequisicao() {
 		ExecutaRequisicaoSOAP.LOGGER.info("Entrando na rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: " + DateFormatUtils.format(System.currentTimeMillis(), "dd/MM/yyyy HH:mm:ss.SSS"));
 
-		// Instanciando objeto file com caminho do diretório que será utilizado para
-		// varremos em busca de arquivos ".PENDING" com as requisições SOAP.
-		final File dir = ExecutaRequisicaoSOAP.DIRETORIO.toFile();
-		if (dir.exists()) {
-			ExecutaRequisicaoSOAP.LOGGER.info("VERIFICANDO  DIRET\u00D3RIO: " + dir.getAbsolutePath());
+		try (final Stream<Path> arquivos = Files.list(ExecutaRequisicaoSOAP.DIRETORIO)
+				.filter(path -> Files.isRegularFile(path) && ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(path).endsWith(ExecutaRequisicaoSOAP.EXTENSAO_PENDING.toLowerCase(Locale.getDefault())))) {
+			final Collection<Path> arquivosAsCollection = arquivos.collect(Collectors.toCollection(ArrayList::new));
+			ExecutaRequisicaoSOAP.LOGGER
+					.info("VERIFICANDO SE EXISTEM ARQUIVOS ELEG\u00CDVEIS PARA A ROTINA DE EXECU\u00C7\u00C3O DA REQUISI\u00C7\u00C3O SOAP.\nQuantidade de arquivo(s) para processar: "
+							+ arquivosAsCollection.size());
 
-			// Buscando no diretório apenas arquivos do tipo ".PENDING" e que sejam arquivos
-			// e não diretórios.
-			final File[] arquivos = dir.listFiles(file -> file.isFile() && ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName()).equalsIgnoreCase(ExecutaRequisicaoSOAP.EXTENSAO_PENDING));
+			for (final Path caminho : arquivosAsCollection) {
+				final StringBuilder corpoRequisicao = new StringBuilder();
+				String configuracoes = null;
+				String url = null;
+				MimeHeaders mimeHeaders = null;
 
-			ExecutaRequisicaoSOAP.LOGGER.info(
-					"VERIFICANDO SE EXISTEM ARQUIVOS ELEG\u00CDVEIS PARA A ROTINA DE EXECU\u00C7\u00C3O DA REQUISI\u00C7\u00C3O SOAP.\nQuantidade de arquivo(s) para processar: " + arquivos.length);
+				// Como dito no javadoc da classe, a extensão do arquivo é utilizada como
+				// status, então para evitarmos repetições com robôs de outros usuários, mudamos
+				// a extensão para doing.
+				final Path doing = ExecutaRequisicaoSOAP.renomearArquivo(caminho, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
 
-			// Varre a lista de arquivos encontrados e submete a requisição.
-			Arrays.asList(arquivos).forEach(f -> ExecutaRequisicaoSOAP.construirArquivosESubmeterRequisicao(f));
-		}
-	}
+				try (BufferedReader reader = Files.newBufferedReader(doing, StandardCharsets.UTF_8)) {
+					// Leitura do arquivo. A primeira linha contém as "configurações" do mesmo.
+					configuracoes = reader.readLine();
 
-	/**
-	 * M&eacute;todo respons&aacute;vel por submeter cada requisi&ccedil;&atilde;o
-	 * que chega por arquivo.
-	 *
-	 * @param arquivo
-	 *            {@link File Arquivo} que ser&aacute; &quot;parseado&quot; com a
-	 *            requisi&ccedil;&atilde;o SOAP e, caso necess&aacute;rio, login e
-	 *            senha na primeira linha junto ao endere&ccedil;o da
-	 *            requisi&ccedil;&atilde;o.
-	 *
-	 * @see Writer
-	 * @see OutputStream
-	 * @see SOAPMessage
-	 */
-	private static void construirArquivosESubmeterRequisicao(final File arquivo) {
-		try {
-			final StringBuilder corpoRequisicao = new StringBuilder();
-			String configuracoes = null;
-			String url = null;
-			MimeHeaders mimeHeaders = null;
+					// Senão tivermos configurações o arquivo é inválido. Devemos avisar e seguir
+					// para o próximo.
+					if (StringUtils.isBlank(configuracoes)) {
+						ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m as configura\u00E7\u00F5es da requisi\u00E7\u00E3o SOAP.");
+						continue;
+					}
 
-			// Como dito no javadoc da classe, a extensão do arquivo é utilizada como
-			// status, então para evitarmos repetições com robôs de outros usuários, mudamos
-			// a extensão para doing.
-			final String doing = ExecutaRequisicaoSOAP.renomearArquivo(arquivo, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
+					// Caso tenhamos ";" na linha, sabemos que temos um job com necessidade de
+					// utilização de autenticação com Basic Authentication.
+					final String[] headers = configuracoes.split(";");
+					if (headers.length > 1) {
+						mimeHeaders = new MimeHeaders();
 
-			try (BufferedReader reader = new BufferedReader(new FileReader(doing))) {
-				// Leitura do arquivo. A primeira linha contém as "configurações" do mesmo.
-				configuracoes = reader.readLine();
+						// Recupera a URL.
+						url = headers[0];
 
-				// Senão tivermos configurações o arquivo é inválido. Devemos avisar e seguir
-				// para o próximo.
-				if (StringUtils.isBlank(configuracoes)) {
-					ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m as configura\u00E7\u00F5es da requisi\u00E7\u00E3o SOAP.");
-					return;
+						// Recupera e encoda em Base64 o login e a senha.
+						mimeHeaders.addHeader("Authorization", "Basic " + Base64.encodeBase64String(headers[1].getBytes(StandardCharsets.UTF_8)));
+					} else {
+						// Caso contrário temos só a URL mesmo.
+						url = configuracoes;
+					}
+
+					// Recuperando o envelope SOAP propriamente dito.
+					String linha = null;
+					while ((linha = reader.readLine()) != null) {
+						corpoRequisicao.append(linha);
+					}
 				}
 
-				// Caso tenhamos ";" na linha, sabemos que temos um job com necessidade de
-				// utilização de autenticação com Basic Authentication.
-				final String[] headers = configuracoes.split(";");
-				if (headers.length > 1) {
-					mimeHeaders = new MimeHeaders();
-
-					// Recupera a URL.
-					url = headers[0];
-
-					// Recupera e encoda em Base64 o login e a senha.
-					mimeHeaders.addHeader("Authorization", "Basic " + Base64.encodeBase64String(headers[1].getBytes(StandardCharsets.UTF_8)));
-				} else {
-					// Caso contrário temos só a URL mesmo.
-					url = configuracoes;
+				// Senão tivermos corpo da requisição o arquivo é inválido. Devemos avisar e
+				// seguir para o próximo.
+				if (corpoRequisicao.length() == 0) {
+					ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m o corpo (envelope SOAP) da requisi\u00E7\u00E3o SOAP.");
+					continue;
 				}
 
-				String linha = null;
-				while ((linha = reader.readLine()) != null) {
-					corpoRequisicao.append(linha);
+				// Cria o objeto com a mensagem SOAP a ser enviada.
+				final SOAPMessage message = MessageFactory.newInstance().createMessage(mimeHeaders, new ByteArrayInputStream(corpoRequisicao.toString().getBytes(StandardCharsets.UTF_8)));
+
+				// Recupera a resposta depois de executada a requisição com a mensagem SOAP
+				// acima.
+				final SOAPMessage response = SOAPConnectionFactory.newInstance().createConnection().call(message, url.trim());
+
+				// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
+				ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
+
+				// Escreve arquivo de resposta do tipo RESPONSE num stream e utiliza um writer
+				// para criar o arquivo propriamente dito.
+				try (OutputStream out = Files.newOutputStream(Paths.get(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
+						StandardOpenOption.WRITE); Writer writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
+					response.writeTo(out);
+
+					writer.flush();
 				}
-			}
-
-			// Senão tivermos corpo da requisição o arquivo é inválido. Devemos avisar e
-			// seguir para o próximo.
-			if (corpoRequisicao.length() == 0) {
-				ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m o corpo (envelope SOAP) da requisi\u00E7\u00E3o SOAP.");
-				return;
-			}
-
-			// Cria o objeto com a mensagem SOAP a ser enviada.
-			final SOAPMessage message = MessageFactory.newInstance().createMessage(mimeHeaders, new ByteArrayInputStream(corpoRequisicao.toString().getBytes(StandardCharsets.UTF_8)));
-
-			// Recupera a resposta depois de executada a requisição com a mensagem SOAP
-			// acima.
-			final SOAPMessage response = SOAPConnectionFactory.newInstance().createConnection().call(message, url.trim());
-
-			// TODO: Verificar possibilidade de utilizar FileOutputStream e eliminar
-			// overhead no filewriter abaixo.
-			// Escreve a resposta num stream.
-			final OutputStream out = new ByteArrayOutputStream();
-			response.writeTo(out);
-
-			// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
-			ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
-
-			// Escreve arquivo de resposta do tipo RESPONSE.
-			try (Writer writer = new BufferedWriter(new FileWriter(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(arquivo) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE))) {
-				writer.write(out.toString());
-				writer.flush();
 			}
 		} catch (final IOException | SOAPException | RuntimeException e) {
-			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisiu\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
+			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisi\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
 		}
-	}
-
-	/**
-	 * <p>
-	 * Sobrecarga de m&eacute;todo para o m&eacute;todo
-	 * {@link ExecutaRequisicaoSOAP#renomearArquivo(String, String)
-	 * renomearArquivo(String, String)} que efetivamente faz o que tem que ser
-	 * feito.
-	 * </p>
-	 * <p>
-	 * Este m&eacute;todo apenas chama o j&aacute; mencionado m&eacute;todo acima
-	 * passando os par&acirc;metros documentados.
-	 * </p>
-	 *
-	 * @param arquivo
-	 *            Objeto do tipo {@link File} que passar&aacute; para o
-	 *            m&eacute;todo
-	 *            {@link ExecutaRequisicaoSOAP#renomearArquivo(String, String)
-	 *            renomearArquivo(String, String)} o
-	 *            {@linkplain File#getAbsolutePath() caminho absoluto} do arquivo.
-	 * @param extensaoNova
-	 *            Variável do tipo {@link String} contendo uma das extens&otilde;es
-	 *            aceitas pelo rob&ocirc;.
-	 *
-	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do arquivo
-	 *         renomeado.
-	 *
-	 * @throws IOException
-	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
-	 *             dois motivos:
-	 *             <ol>
-	 *             <li>Pelo m&eacute;todo
-	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
-	 *             este m&eacute;todo para que seja tratado por quem o chamou;</li>
-	 *             <li>Caso seja passado no par&acirc;metro
-	 *             <code><strong>extensaoNova</strong></code> um valor que
-	 *             n&atilde;o esteja definido na constante
-	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
-	 *             </ol>
-	 * @throws SecurityException
-	 *             Lan&ccedil;ada pelo m&eacute;todo
-	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
-	 *             este m&eacute;todo para que seja tratado por quem o chamou.
-	 * @throws UnsupportedOperationException
-	 *             Lan&ccedil;ada pelo m&eacute;todo
-	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
-	 *             este m&eacute;todo para que seja tratado por quem o chamou.
-	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
-	 * @see ExecutaRequisicaoSOAP#renomearArquivo(String, String)
-	 *      renomearArquivo(String, String)
-	 * @see String
-	 * @see Path
-	 * @see java.nio.file.CopyOption CopyOption
-	 * @see StandardCopyOption
-	 * @see Files#move(Path, Path, java.nio.file.CopyOption...) Files#move(Path,
-	 *      Path, CopyOption...)
-	 */
-	private static String renomearArquivo(final File arquivo, final String extensaoNova) throws IOException {
-		return ExecutaRequisicaoSOAP.renomearArquivo(arquivo.getAbsolutePath(), extensaoNova);
 	}
 
 	/**
 	 * M&eacute;todo respons&aacute;vel por renomear um arquivo utilizado para uma
 	 * das extens&otilde;es reconhecidas por este rob&ocirc;.
 	 *
-	 * @param caminhoAbsolutoArquivo
-	 *            Variável do tipo {@link String} contendo o caminho absoluto do
-	 *            arquivo a ser renomeado.
+	 * @param origem
+	 *            Objeto do tipo {@link Path} representando um arquivo f&iacute;sico
+	 *            do sistema contendo o caminho absoluto do arquivo a ser renomeado.
 	 * @param extensaoNova
-	 *            Variável do tipo {@link String} contendo uma das extens&otilde;es
-	 *            aceitas pelo rob&ocirc;.
+	 *            Objeto do tipo {@link String} contendo uma das extens&otilde;es
+	 *            aceitas pelo rob&ocirc;. Esta extens&atilde;o &eacute; verificada
+	 *            antes de renomear o arquivo de fato.
 	 *
-	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do arquivo
-	 *         renomeado.
+	 * @return Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o do
+	 *         caminho absoluto do arquivo a ser renomeado.
 	 *
 	 * @throws IOException
 	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
@@ -486,50 +428,52 @@ public class ExecutaRequisicaoSOAP {
 	 *             <ol>
 	 *             <li>Pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             Files.move(Path, Path, CopyOption...)} e relan&ccedil;ada por
 	 *             este m&eacute;todo para que seja tratado por quem o chamou;</li>
 	 *             <li>Caso seja passado no par&acirc;metro
 	 *             <code><strong>extensaoNova</strong></code> um valor que
-	 *             n&atilde;o esteja definido na constante
-	 *             {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES}.</li>
+	 *             n&atilde;o esteja definido por uma das seguintes constantes
+	 *             abaixo:
+	 *             <ul>
+	 *             <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_DOING
+	 *             EXTENSAO_DOING}</li>
+	 *             <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_DONE
+	 *             EXTENSAO_DONE}</li>
+	 *             <li>{@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE
+	 *             EXTENSAO_RESPONSE}</li>
+	 *             </ul>
+	 *             </li>
 	 *             </ol>
 	 * @throws SecurityException
 	 *             Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             Files.move(Path, Path, CopyOption...)} e relan&ccedil;ada por
 	 *             este m&eacute;todo para que seja tratado por quem o chamou.
 	 * @throws UnsupportedOperationException
 	 *             Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
-	 *             Files#move(Path, Path, CopyOption...)} e relan&ccedil;ada por
+	 *             Files.move(Path, Path, CopyOption...)} e relan&ccedil;ada por
 	 *             este m&eacute;todo para que seja tratado por quem o chamou.
 	 *
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
-	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
-	 *      recuperarCaminhoArquivoSemExtensao(String)
-	 * @see ExecutaRequisicaoSOAP#renomearArquivo(File, String)
-	 *      renomearArquivo(File, String)
+	 * @see ExecutaRequisicaoSOAP#isExtensaoValida(String) isExtensaoValida(String)
+	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(Path)
+	 *      recuperarCaminhoArquivoSemExtensao(Path)
 	 * @see String
 	 * @see Path
 	 * @see java.nio.file.CopyOption CopyOption
 	 * @see StandardCopyOption
-	 * @see Files#move(Path, Path, java.nio.file.CopyOption...) Files#move(Path,
+	 * @see StandardCopyOption#REPLACE_EXISTING
+	 * @see Files#move(Path, Path, java.nio.file.CopyOption...) Files.move(Path,
 	 *      Path, CopyOption...)
 	 */
-	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova) throws IOException {
+	private static Path renomearArquivo(final Path origem, final String extensaoNova) throws IOException {
 		if (!ExecutaRequisicaoSOAP.isExtensaoValida(extensaoNova)) {
 			throw new IOException("Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP#renomearArquivo(Path, String).");
 		}
 
-		// Recuperando caminho do arquivo a ser renomeado.
-		final Path origem = Paths.get(caminhoAbsolutoArquivo);
-
-		// Renomeando (mesmo com o nome do método pela API Java sendo estranho).
-		final Path retorno = Files.move(origem, origem.resolveSibling(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminhoAbsolutoArquivo) + extensaoNova),
-				StandardCopyOption.REPLACE_EXISTING);
-
-		// Retornando caminho absoluto do arquivo renomeado.
-		return retorno.toString();
+		// Renomeando (mesmo com o nome do método pela API Java sendo estranho) e
+		// retornando caminho absoluto do arquivo renomeado.
+		return Files.move(origem, origem.resolveSibling(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(origem) + extensaoNova), StandardCopyOption.REPLACE_EXISTING);
 	}
 
 	/**
@@ -576,80 +520,22 @@ public class ExecutaRequisicaoSOAP {
 	}
 
 	/**
-	 * <p>
-	 * Sobrecarga de m&eacute;todo para o m&eacute;todo
-	 * {@link ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
-	 * recuperarCaminhoArquivoSemExtensao(String)} que efetivamente faz o que tem
-	 * que ser feito.
-	 * </p>
-	 * <p>
-	 * Este m&eacute;todo apenas chama o j&aacute; mencionado m&eacute;todo acima
-	 * passando a {@link String} retornada pelo m&eacute;todo
-	 * {@linkplain File#getAbsolutePath()} contendo o caminho absoluto do arquivo,
-	 * atrav&eacute;s do par&acirc;metro documentado.
-	 * </p>
+	 * M&eacute;todo respons&aacute;vel por dado um arquivo f&iacute;sico do sistema
+	 * contendo o caminho absoluto do mesmo, retornar o pr&oacute;prio caminho sem a
+	 * extens&atilde;o do mesmo.
 	 *
-	 * @param arquivo
-	 *            Objeto do tipo {@link File} que passar&aacute; para o
-	 *            m&eacute;todo
-	 *            {@link ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
-	 *            recuperarCaminhoArquivoSemExtensao(String)} o
-	 *            {@linkplain File#getAbsolutePath() caminho absoluto} do arquivo.
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
 	 *
 	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do
 	 *         {@link File arquivo} sem a sua extens&atilde;o.
 	 *
-	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(String)
-	 *      recuperarCaminhoArquivoSemExtensao(String)
-	 * @see String
-	 * @see File#getAbsolutePath()
+	 * @see Path
+	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean) substring(Path, boolean)
 	 */
-	private static String recuperarCaminhoArquivoSemExtensao(final File arquivo) {
-		return ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(arquivo.getAbsolutePath());
-	}
-
-	/**
-	 * M&eacute;todo respons&aacute;vel por dado o caminho absoluto de um arquivo,
-	 * retornar o mesmo sem a extens&atilde;o do mesmo.
-	 *
-	 * @param arquivo
-	 *            Objeto do tipo {@link String} contendo o caminho absoluto de um
-	 *            arquivo.
-	 *
-	 * @return Objeto do tipo {@link String} contendo o caminho absoluto do
-	 *         {@link File arquivo} sem a sua extens&atilde;o.
-	 *
-	 * @see ExecutaRequisicaoSOAP#recuperarCaminhoArquivoSemExtensao(File)
-	 *      recuperarCaminhoArquivoSemExtensao(File)
-	 * @see String
-	 * @see String#lastIndexOf(int)
-	 * @see String#substring(int, int)
-	 */
-	private static String recuperarCaminhoArquivoSemExtensao(final String caminhoAbsolutoArquivo) {
-		// Retorna o caminho absoluto sem a extensão fazendo uma busca do início da
-		// String até a posição do último ponto encontrado.
-		return caminhoAbsolutoArquivo.substring(0, caminhoAbsolutoArquivo.lastIndexOf('.'));
-	}
-
-	/**
-	 * M&eacute;todo respons&aacute;vel por dado o caminho absoluto de um arquivo,
-	 * retornar sua extens&atilde;o com o s&iacute;mbolo de
-	 * &quot;<code><strong>.</strong></code>&quot;.
-	 *
-	 * @param arquivo
-	 *            Objeto do tipo {@link String} contendo o caminho absoluto de um
-	 *            arquivo.
-	 *
-	 * @return Objeto do tipo {@link String} contendo apenas a extens&atilde;o deste
-	 *         mesmo arquivo com o s&iacute;mbolo de
-	 *         &quot;<code><strong>.</strong></code>&quot;.
-	 *
-	 * @see String
-	 * @see String#lastIndexOf(int)
-	 * @see String#substring(int, int)
-	 */
-	private static String recuperarExtensaoArquivo(final String nomeArquivo) {
-		return nomeArquivo.substring(nomeArquivo.lastIndexOf('.'));
+	private static String recuperarCaminhoArquivoSemExtensao(final Path caminho) {
+		return ExecutaRequisicaoSOAP.substring(caminho, false);
 	}
 
 	/**
