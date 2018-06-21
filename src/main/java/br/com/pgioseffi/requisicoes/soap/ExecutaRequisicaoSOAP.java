@@ -212,7 +212,7 @@ public class ExecutaRequisicaoSOAP {
 
 	private static final FileLock LOCK = ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControleSegundaFase();
 
-	public static RandomAccessFile adquirirBloqueioArquivoControlePrimeiraFase() throws IOException {
+	private static RandomAccessFile adquirirBloqueioArquivoControlePrimeiraFase() throws IOException {
 		final String mensagem = "Job em execu\u00E7\u00E3o pelo usu\u00E1rio "
 				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(Locale.getDefault());
 
@@ -234,7 +234,7 @@ public class ExecutaRequisicaoSOAP {
 				"rw");
 	}
 
-	public static FileLock adquirirBloqueioArquivoControleSegundaFase() {
+	private static FileLock adquirirBloqueioArquivoControleSegundaFase() {
 		try {
 			return ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControlePrimeiraFase().getChannel().lock(0, Long.MAX_VALUE, false);
 		} catch (final Throwable e) {
