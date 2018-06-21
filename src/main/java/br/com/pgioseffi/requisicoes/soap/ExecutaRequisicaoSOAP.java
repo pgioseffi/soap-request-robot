@@ -427,78 +427,82 @@ public class ExecutaRequisicaoSOAP {
 							+ arquivosAsCollection.size());
 
 			for (final Path caminho : arquivosAsCollection) {
-				final StringBuilder corpoRequisicao = new StringBuilder();
-				String configuracoes = null;
-				String url = null;
-				MimeHeaders mimeHeaders = null;
+				try {
+					final StringBuilder corpoRequisicao = new StringBuilder();
+					String configuracoes = null;
+					String url = null;
+					MimeHeaders mimeHeaders = null;
 
-				// Como dito no javadoc da classe, a extensão do arquivo é utilizada como
-				// status, então para evitarmos repetições com robôs de outros usuários, mudamos
-				// a extensão para doing.
-				final Path doing = ExecutaRequisicaoSOAP.renomearArquivo(caminho, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
+					// Como dito no javadoc da classe, a extensão do arquivo é utilizada como
+					// status, então para evitarmos repetições com robôs de outros usuários, mudamos
+					// a extensão para doing.
+					final Path doing = ExecutaRequisicaoSOAP.renomearArquivo(caminho, ExecutaRequisicaoSOAP.EXTENSAO_DOING);
 
-				try (BufferedReader reader = Files.newBufferedReader(doing, StandardCharsets.UTF_8)) {
-					// Leitura do arquivo. A primeira linha contém as "configurações" do mesmo.
-					configuracoes = reader.readLine();
+					try (BufferedReader reader = Files.newBufferedReader(doing, StandardCharsets.UTF_8)) {
+						// Leitura do arquivo. A primeira linha contém as "configurações" do mesmo.
+						configuracoes = reader.readLine();
 
-					// Senão tivermos configurações o arquivo é inválido. Devemos avisar e seguir
-					// para o próximo.
-					if (StringUtils.isBlank(configuracoes)) {
-						ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m as configura\u00E7\u00F5es da requisi\u00E7\u00E3o SOAP.");
+						// Senão tivermos configurações o arquivo é inválido. Devemos avisar e seguir
+						// para o próximo.
+						if (StringUtils.isBlank(configuracoes)) {
+							ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m as configura\u00E7\u00F5es da requisi\u00E7\u00E3o SOAP.");
+							continue;
+						}
+
+						// Caso tenhamos ";" na linha, sabemos que temos um job com necessidade de
+						// utilização de autenticação com Basic Authentication.
+						final String[] headers = configuracoes.split(";");
+						if (headers.length > 1) {
+							mimeHeaders = new MimeHeaders();
+
+							// Recupera a URL.
+							url = headers[0];
+
+							// Recupera e encoda em Base64 o login e a senha.
+							mimeHeaders.addHeader("Authorization", "Basic " + Base64.encodeBase64String(headers[1].getBytes(StandardCharsets.UTF_8)));
+						} else {
+							// Caso contrário temos só a URL mesmo.
+							url = configuracoes;
+						}
+
+						// Recuperando o envelope SOAP propriamente dito.
+						String linha = null;
+						while ((linha = reader.readLine()) != null) {
+							corpoRequisicao.append(linha);
+						}
+					}
+
+					// Senão tivermos corpo da requisição o arquivo é inválido. Devemos avisar e
+					// seguir para o próximo.
+					if (corpoRequisicao.length() == 0) {
+						ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m o corpo (envelope SOAP) da requisi\u00E7\u00E3o SOAP.");
 						continue;
 					}
 
-					// Caso tenhamos ";" na linha, sabemos que temos um job com necessidade de
-					// utilização de autenticação com Basic Authentication.
-					final String[] headers = configuracoes.split(";");
-					if (headers.length > 1) {
-						mimeHeaders = new MimeHeaders();
+					// Cria o objeto com a mensagem SOAP a ser enviada.
+					final SOAPMessage message = MessageFactory.newInstance().createMessage(mimeHeaders, new ByteArrayInputStream(corpoRequisicao.toString().getBytes(StandardCharsets.UTF_8)));
 
-						// Recupera a URL.
-						url = headers[0];
+					// Recupera a resposta depois de executada a requisição com a mensagem SOAP
+					// acima.
+					final SOAPMessage response = SOAPConnectionFactory.newInstance().createConnection().call(message, url.trim());
 
-						// Recupera e encoda em Base64 o login e a senha.
-						mimeHeaders.addHeader("Authorization", "Basic " + Base64.encodeBase64String(headers[1].getBytes(StandardCharsets.UTF_8)));
-					} else {
-						// Caso contrário temos só a URL mesmo.
-						url = configuracoes;
+					// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
+					ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
+
+					// Escreve arquivo de resposta do tipo RESPONSE num stream e utiliza um writer
+					// para criar o arquivo propriamente dito.
+					try (OutputStream out = Files.newOutputStream(Paths.get(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
+							StandardOpenOption.WRITE); Writer writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
+						response.writeTo(out);
+
+						writer.flush();
 					}
-
-					// Recuperando o envelope SOAP propriamente dito.
-					String linha = null;
-					while ((linha = reader.readLine()) != null) {
-						corpoRequisicao.append(linha);
-					}
-				}
-
-				// Senão tivermos corpo da requisição o arquivo é inválido. Devemos avisar e
-				// seguir para o próximo.
-				if (corpoRequisicao.length() == 0) {
-					ExecutaRequisicaoSOAP.LOGGER.error("Arquivo inv\u00E1lido, pois n\u00E3o cont\u00E9m o corpo (envelope SOAP) da requisi\u00E7\u00E3o SOAP.");
-					continue;
-				}
-
-				// Cria o objeto com a mensagem SOAP a ser enviada.
-				final SOAPMessage message = MessageFactory.newInstance().createMessage(mimeHeaders, new ByteArrayInputStream(corpoRequisicao.toString().getBytes(StandardCharsets.UTF_8)));
-
-				// Recupera a resposta depois de executada a requisição com a mensagem SOAP
-				// acima.
-				final SOAPMessage response = SOAPConnectionFactory.newInstance().createConnection().call(message, url.trim());
-
-				// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
-				ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
-
-				// Escreve arquivo de resposta do tipo RESPONSE num stream e utiliza um writer
-				// para criar o arquivo propriamente dito.
-				try (OutputStream out = Files.newOutputStream(Paths.get(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
-						StandardOpenOption.WRITE); Writer writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
-					response.writeTo(out);
-
-					writer.flush();
+				} catch (final IOException | SOAPException | RuntimeException e) {
+					ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisi\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
 				}
 			}
-		} catch (final IOException | SOAPException | RuntimeException e) {
-			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisi\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
+		} catch (final IOException e) {
+			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao buscar arquivos do diret\u00F3rio " + ExecutaRequisicaoSOAP.DIRETORIO + ". ERRO: " + e.getMessage(), e);
 		}
 	}
 
