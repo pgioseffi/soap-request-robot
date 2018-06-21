@@ -210,9 +210,66 @@ public class ExecutaRequisicaoSOAP {
 	private static final Path CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO = ExecutaRequisicaoSOAP.DIRETORIO
 			.resolve(ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("nome.arquivo.controle.execucao"));
 
-	private static final FileLock LOCK = ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControleSegundaFase();
+	/**
+	 * Constante utilizada para garantir que o arquivo de controle de
+	 * execu&ccedil;&atilde;o do rob&ocirc; por usu&aacute;rio não ser&aacute;
+	 * exclu&iacute;do do sistema operacional onde houver suporte &agrave; tal
+	 * funcionalidae por sistema operacional. Este bloqueio &eacute; liberado ao fim
+	 * da execu&ccedil;&atilde;o do rob&ocirc;.
+	 *
+	 * @see ExecutaRequisicaoSOAP#iniciarAquisicaoBloqueioArquivoControle()
+	 *      iniciarAquisicaoBloqueioArquivoControle()
+	 * @see ExecutaRequisicaoSOAP#finalizarAquisicaoBloqueioArquivoControle()
+	 *      finalizarAquisicaoBloqueioArquivoControle()
+	 * @see Runtime#getRuntime()
+	 * @see Runtime#addShutdownHook(Thread)
+	 * @see FileLock
+	 * @see FileLock#release()
+	 */
+	private static final FileLock LOCK = ExecutaRequisicaoSOAP.finalizarAquisicaoBloqueioArquivoControle();
 
-	private static RandomAccessFile adquirirBloqueioArquivoControlePrimeiraFase() throws IOException {
+	/**
+	 * <p>
+	 * M&eacute;todo respons&aacute;vel por iniciar aquisi&ccedil;&atilde;o do
+	 * bloqueio de exclus&atilde;o do arquivo de controle de execu&ccedil;&atilde;o
+	 * por usu&aacute;rio do rob&ocirc;.
+	 * </p>
+	 * <p>
+	 * M&eacute;todo necess&aacute;rio pois utiliza o objeto
+	 * {@link RandomAccessFile} num try-with-resources libera o bloqueio do arquivo
+	 * e n&atilde;o o utilizar, mas n&atilde;o o retornar gera warning de resources
+	 * do compilador Java.
+	 * </p>
+	 *
+	 * @return O objeto {@link RandomAccessFile} que liberar&aacute; o
+	 *         {@link java.nio.channels.FileChannel FileChannel} atrav&eacute;s do
+	 *         m&eacute;todo {@link RandomAccessFile#getChannel()} que nos
+	 *         dar&aacute; o objeto {@link FileLock} que efetivamente garante o
+	 *         bloqueio atrav&eacute;s do m&eacute;todo
+	 *         {@link java.nio.channels.FileChannel#lock(long, long, boolean)
+	 *         FileChannel.lock(long, long, boolean)}.
+	 *
+	 * @throws IOException
+	 *             Exce&ccedil;&atilde;o lan&ccedil;ada em uma das tr&ecirc;s
+	 *             hip&oacute;ses:
+	 *             <ol>
+	 *             <li>Lan&ccedil;ada pelo m&eacute;todo
+	 *             {@link Files#createDirectory(Path, java.nio.file.attribute.FileAttribute...)
+	 *             Files.createDirectory(Path, FileAttribute...)};</li>
+	 *             <li>Lan&ccedil;ada pelo m&eacute;todo
+	 *             {@link Files#write(Path, byte[], java.nio.file.OpenOption...)
+	 *             Files.write(Path, byte[], OpenOption...)};</li>
+	 *             <li>O {@link RandomAccessFile#RandomAccessFile(File, String)
+	 *             construtor} da classe {@link RandomAccessFile}.</li>
+	 *             </ol>
+	 *
+	 * @see ExecutaRequisicaoSOAP#LOCK LOCK
+	 * @see ExecutaRequisicaoSOAP#finalizarAquisicaoBloqueioArquivoControle()
+	 *      finalizarAquisicaoBloqueioArquivoControle()
+	 * @see java.nio.channels.FileChannel FileChannel
+	 * @see RandomAccessFile
+	 */
+	private static RandomAccessFile iniciarAquisicaoBloqueioArquivoControle() throws IOException {
 		final String mensagem = "Job em execu\u00E7\u00E3o pelo usu\u00E1rio "
 				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(Locale.getDefault());
 
@@ -234,12 +291,50 @@ public class ExecutaRequisicaoSOAP {
 				"rw");
 	}
 
-	private static FileLock adquirirBloqueioArquivoControleSegundaFase() {
+	/**
+	 * <p>
+	 * M&eacute;todo respons&aacute;vel por finalizar aquisi&ccedil;&atilde;o do
+	 * bloqueio de exclus&atilde;o do arquivo de controle de execu&ccedil;&atilde;o
+	 * por usu&aacute;rio do rob&ocirc;.
+	 * </p>
+	 * <p>
+	 * M&eacute;todo necess&aacute;rio pois utiliza o objeto {@link FileLock} obtido
+	 * atrav&eacute;s do m&eacute;todo
+	 * {@link java.nio.channels.FileChannel#lock(long, long, boolean)
+	 * FileChannel.lock(long, long, boolean)}, sendo este obtido atrav&eacute;s do
+	 * retorno do m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#iniciarAquisicaoBloqueioArquivoControle()
+	 * iniciarAquisicaoBloqueioArquivoControle()}, que deve ter sua
+	 * documenta&ccedil;&atilde;o lida para melhor entendimento.
+	 * </p>
+	 * <p>
+	 * Este bloqueio do arquivo &eacute; armazenado na constante
+	 * {@link ExecutaRequisicaoSOAP#LOCK LOCK} que &eacute; posteriormente utilizada
+	 * para liberar o bloqueio ao fim da execu&ccedil;&atilde;o do rob&ocirc;.
+	 * </p>
+	 *
+	 * @return O Objeto {@link FileLock} que efetivamente garantir&aacute; o
+	 *         bloqueio do arquivo de controle de execu&ccedil;&atilde;o por
+	 *         usu&aacute;rio.
+	 *
+	 * @see ExecutaRequisicaoSOAP#iniciarAquisicaoBloqueioArquivoControle()
+	 *      iniciarAquisicaoBloqueioArquivoControle()
+	 * @see RandomAccessFile#getChannel()
+	 * @see FileLock#release()
+	 * @see Runtime
+	 * @see Runtime#getRuntime()
+	 * @see Runtime#addShutdownHook(Thread)
+	 * @see java.nio.channels.FileChannel#lock(long, long, boolean)
+	 *      FileChannel.lock(long, long, boolean)
+	 */
+	private static FileLock finalizarAquisicaoBloqueioArquivoControle() {
 		try {
-			return ExecutaRequisicaoSOAP.adquirirBloqueioArquivoControlePrimeiraFase().getChannel().lock(0, Long.MAX_VALUE, false);
+			return ExecutaRequisicaoSOAP.iniciarAquisicaoBloqueioArquivoControle().getChannel().lock(0, Long.MAX_VALUE, false);
 		} catch (final Throwable e) {
 			ExecutaRequisicaoSOAP.LOGGER.error("Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
-			System.exit(-1);
+
+			// TODO: Verificar se não é uma falha de arquitetura o return null após sair.
+			Runtime.getRuntime().exit(-1);
 			return null;
 		}
 	}
@@ -468,7 +563,7 @@ public class ExecutaRequisicaoSOAP {
 	 */
 	private static Path renomearArquivo(final Path origem, final String extensaoNova) throws IOException {
 		if (!ExecutaRequisicaoSOAP.isExtensaoValida(extensaoNova)) {
-			throw new IOException("Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP#renomearArquivo(Path, String).");
+			throw new IOException("Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP.renomearArquivo(Path, String).");
 		}
 
 		// Renomeando (mesmo com o nome do método pela API Java sendo estranho) e
@@ -493,6 +588,7 @@ public class ExecutaRequisicaoSOAP {
 	 *      recuperarExtensaoArquivo(Path)
 	 * @see Files
 	 * @see Files#newDirectoryStream(Path, java.nio.file.DirectoryStream.Filter)
+	 *      Files.newDirectoryStream(Path, DirectoryStream.Filter)
 	 * @see Files#list(Path)
 	 * @see Files#getLastModifiedTime(Path, java.nio.file.LinkOption...)
 	 * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
