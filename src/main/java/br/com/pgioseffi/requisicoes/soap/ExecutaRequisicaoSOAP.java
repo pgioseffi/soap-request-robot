@@ -12,13 +12,12 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -141,35 +140,6 @@ public class ExecutaRequisicaoSOAP {
 	private static final String EXTENSAO_DOING = ".DOING";
 
 	/**
-	 * <p>
-	 * Constante utilizada para a manipula&ccedil;&atilde;o das extens&otilde;es que
-	 * servem como &quot;status&quot deste rob&ocirc; atrav&eacute;s das constantes
-	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE},
-	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING} e
-	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE}.
-	 * </p>
-	 * <p>
-	 * Tais extens&otilde;es mencionadas acima n&atilde;o contemplam a constante
-	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING} pelo motivo
-	 * explicitado no Javadoc da pr&oacute;pria constante.
-	 * </p>
-	 * <p>
-	 * Esta constante foi criada utilizando
-	 * {@link Collections#unmodifiableCollection(Collection)} de maneira que
-	 * n&atilde;o possa ser modificada em tempo de execu&ccedil;&atilde;o.
-	 * </p>
-	 *
-	 * @see Arrays#asList(Object...)
-	 * @see Collections#unmodifiableCollectionCollection)
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
-	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
-	 */
-	private static final Collection<String> EXTENSOES = Collections
-			.unmodifiableList(Arrays.asList(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE, ExecutaRequisicaoSOAP.EXTENSAO_DONE, ExecutaRequisicaoSOAP.EXTENSAO_DOING));
-
-	/**
 	 * Constante utilizada para manter o {@link Logger log} da classe.
 	 *
 	 * @see Logger
@@ -212,7 +182,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_PENDING EXTENSAO_PENDING
 	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES ARQUIVO_PROPERTIES
 	 */
-	private static final String DIRETORIO = ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("diretorio");
+	private static final Path DIRETORIO = Paths.get(ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("diretorio"));
 
 	/**
 	 * Constante utilizada para manter o nome do arquivo que controla se o job
@@ -220,10 +190,12 @@ public class ExecutaRequisicaoSOAP {
 	 * determinado usu&aacute;rio.
 	 *
 	 * @see Properties
+	 * @see Path
+	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
 	 * @see ExecutaRequisicaoSOAP#ARQUIVO_PROPERTIES ARQUIVO_PROPERTIES
 	 */
-	private static final String CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO = ExecutaRequisicaoSOAP.DIRETORIO + File.separatorChar
-			+ ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("nome.arquivo.controle.execucao");
+	private static final Path CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO = ExecutaRequisicaoSOAP.DIRETORIO
+			.resolve(ExecutaRequisicaoSOAP.ARQUIVO_PROPERTIES.getProperty("nome.arquivo.controle.execucao"));
 
 	private ExecutaRequisicaoSOAP() {
 		super();
@@ -254,7 +226,7 @@ public class ExecutaRequisicaoSOAP {
 		// da execução do job.
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
-				Files.delete(Paths.get(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO));
+				Files.delete(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
 			} catch (final IOException e) {
 				ExecutaRequisicaoSOAP.LOGGER.error("Erro ao excluir arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
 			}
@@ -282,7 +254,7 @@ public class ExecutaRequisicaoSOAP {
 		final String mensagem = "Job em execu\u00E7\u00E3o.";
 
 		// Iniciando arquivo de controle.
-		final File singleton = new File(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
+		final File singleton = ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO.toFile();
 
 		if (singleton.exists()) {
 			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
@@ -293,7 +265,7 @@ public class ExecutaRequisicaoSOAP {
 			Runtime.getRuntime().exit(0);
 		} else {
 			// Senão estiver sendo executado, crie um arquivo com uma mensagem padrão.
-			try (Writer writer = new BufferedWriter(new FileWriter(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO))) {
+			try (Writer writer = new BufferedWriter(new FileWriter(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO.toString()))) {
 				writer.write(mensagem);
 				writer.flush();
 			} catch (final IOException e) {
@@ -323,7 +295,7 @@ public class ExecutaRequisicaoSOAP {
 
 		// Instanciando objeto file com caminho do diretório que será utilizado para
 		// varremos em busca de arquivos ".PENDING" com as requisições SOAP.
-		final File dir = new File(ExecutaRequisicaoSOAP.DIRETORIO);
+		final File dir = ExecutaRequisicaoSOAP.DIRETORIO.toFile();
 		if (dir.exists()) {
 			ExecutaRequisicaoSOAP.LOGGER.info("VERIFICANDO  DIRET\u00D3RIO: " + dir.getAbsolutePath());
 
@@ -545,8 +517,8 @@ public class ExecutaRequisicaoSOAP {
 	 *      Path, CopyOption...)
 	 */
 	private static String renomearArquivo(final String caminhoAbsolutoArquivo, final String extensaoNova) throws IOException {
-		if (!ExecutaRequisicaoSOAP.EXTENSOES.contains(extensaoNova)) {
-			throw new IOException("Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP#renomearArquivo(String, String).");
+		if (!ExecutaRequisicaoSOAP.isExtensaoValida(extensaoNova)) {
+			throw new IOException("Extens\u00E3o inv\u00E1lida passada por par\u00E2metro para o m\u00E9todo ExecutaRequisicaoSOAP#renomearArquivo(Path, String).");
 		}
 
 		// Recuperando caminho do arquivo a ser renomeado.
@@ -562,31 +534,44 @@ public class ExecutaRequisicaoSOAP {
 
 	/**
 	 * M&eacute;todo respons&aacute;vel por excluir os arquivos dos tipos definidos
-	 * pela constante {@link ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES} no
+	 * pelas constantes {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING},
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE} e
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE} no
 	 * diret&oacute;rio definido pela constante
 	 * {@link ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO} que tenham sido criado
 	 * h&aacute; mais de uma hora.
 	 *
-	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(String)
-	 *      recuperarExtensaoArquivo(String)
 	 * @see ExecutaRequisicaoSOAP#DIRETORIO DIRETORIO
-	 * @see ExecutaRequisicaoSOAP#EXTENSOES EXTENSOES
-	 * @see File
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
+	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(Path)
+	 *      recuperarExtensaoArquivo(Path)
+	 * @see Files
+	 * @see Files#newDirectoryStream(Path, java.nio.file.DirectoryStream.Filter)
+	 * @see Files#list(Path)
+	 * @see Files#getLastModifiedTime(Path, java.nio.file.LinkOption...)
+	 * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
+	 *      Files.isRegularFile(Path, LinkOption...)
 	 * @see File#lastModified()
-	 * @see File#delete()
-	 * @see File#getName()
-	 * @see File#isFile()
-	 * @see File#listFiles(java.io.FileFilter) File#listFiles(FileFilter)
+	 * @see Files#delete(Path)
+	 * @see Iterable#forEach(java.util.function.Consumer) Iterable.forEach(Consumer)
 	 * @see System#currentTimeMillis()
 	 */
 	private static void excluirArquivos() {
-		final File diretorio = new File(ExecutaRequisicaoSOAP.DIRETORIO);
-
-		if (diretorio.exists()) {
-			// Se o diretório existir, recupero os arquivos do tipo definido pela constante
-			// criado há mais de uma hora, transformo numa lista e excluo.
-			Arrays.asList(diretorio.listFiles((file) -> ExecutaRequisicaoSOAP.EXTENSOES.contains(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(file.getName())) && file.isFile()
-					&& System.currentTimeMillis() - file.lastModified() >= 3600000)).forEach(File::delete);
+		// Recupero os arquivos do tipo definido pela constante criado há mais de uma
+		// hora, transformo numa lista e excluo.
+		try (final DirectoryStream<Path> arquivos = Files.newDirectoryStream(ExecutaRequisicaoSOAP.DIRETORIO,
+				path -> Files.isRegularFile(path) && System.currentTimeMillis() - Files.getLastModifiedTime(path).toMillis() >= 360000 && ExecutaRequisicaoSOAP.isExtensaoValida(path))) {
+			arquivos.forEach(path -> {
+				try {
+					Files.delete(path);
+				} catch (final IOException e) {
+					ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao excluir arquivo " + path.getFileName().toString() + ". ERRO: " + e.getMessage(), e);
+				}
+			});
+		} catch (final IOException e) {
+			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao listar arquivos do diret\u00F3rio " + ExecutaRequisicaoSOAP.DIRETORIO.toString() + ". ERRO: ", e);
 		}
 	}
 
@@ -665,5 +650,212 @@ public class ExecutaRequisicaoSOAP {
 	 */
 	private static String recuperarExtensaoArquivo(final String nomeArquivo) {
 		return nomeArquivo.substring(nomeArquivo.lastIndexOf('.'));
+	}
+
+	/**
+	 * M&eacute;todo respons&aacute;vel por dado o caminho absoluto de um arquivo,
+	 * retornar sua extens&atilde;o com o s&iacute;mbolo de
+	 * &quot;<code><strong>.</strong></code>&quot;.
+	 *
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 *
+	 * @return Objeto do tipo {@link String} contendo apenas a extens&atilde;o deste
+	 *         mesmo arquivo com o s&iacute;mbolo de
+	 *         &quot;<code><strong>.</strong></code>&quot;.
+	 *
+	 * @see Path
+	 * @see ExecutaRequisicaoSOAP#substring(Path) substring(Path)
+	 */
+	private static String recuperarExtensaoArquivo(final Path caminho) {
+		return ExecutaRequisicaoSOAP.substring(caminho);
+	}
+
+	/**
+	 * Sobrecarga para o m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#substring(Path, boolean) substring(Path,
+	 * boolean)} passando o par&acirc;metro <code><strong>reverso</strong></code> do
+	 * m&eacute;todo supracitado com o valor <code><strong>true</strong></code> por
+	 * padr&atilde;o.
+	 *
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 *
+	 * @return Objeto do tipo {@link String} contendo a
+	 *         {@link String#substring(int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>true</strong></code> ou a
+	 *         {@link String#substring(int, int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>false</strong></code> da {@link String} retornada pelo
+	 *         m&eacute;todo {@link Path#toString()} em cima de
+	 *         {@link Path#getFileName()}.
+	 *
+	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean) substring(Path, boolean)
+	 */
+	private static String substring(final Path caminho) {
+		return ExecutaRequisicaoSOAP.substring(caminho, true);
+	}
+
+	/**
+	 * Sobrecarga para o m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#substring(Path, boolean, char) substring(Path,
+	 * boolean, char)} passando o par&acirc;metro
+	 * <code><strong>caracterSeparacao</strong></code> do m&eacute;todo supracitado
+	 * com o valor <code><strong>&quot;.&quot;</strong></code> por padr&atilde;o.
+	 *
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 * @param reverso
+	 *            O intr&iacute;nseco <code><strong>boolean</strong></code> que
+	 *            determinar&aacute; se buscaremos at&eacute; acharmos a
+	 *            &uacute;ltima representa&ccedil;&atilde;o do caracter passado por
+	 *            par&acirc;metro <code><strong>caracterSeparacao</strong></code> ou
+	 *            a partir do mesmo conforme documenta&ccedil;&atilde;o do
+	 *            pr&oacute;prio m&eacute;todo.
+	 *
+	 * @return Objeto do tipo {@link String} contendo a
+	 *         {@link String#substring(int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>true</strong></code> ou a
+	 *         {@link String#substring(int, int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>false</strong></code> da {@link String} retornada pelo
+	 *         m&eacute;todo {@link Path#toString()} em cima de
+	 *         {@link Path#getFileName()}.
+	 *
+	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean, char) substring(Path,
+	 *      boolean, char)
+	 */
+	private static String substring(final Path caminho, final boolean reverso) {
+		return ExecutaRequisicaoSOAP.substring(caminho, reverso, '.');
+	}
+
+	/**
+	 * M&eacute;todo respons&aacute;vel por fazer o que faz o m&eacute;todo
+	 * {@link String#substring(int)} quando o par&acirc;metro
+	 * <code><strong>reverso</strong></code> est&aacute; com o valor
+	 * <code><strong>true</strong></code> e o que faz o m&eacute;todo
+	 * {@link String#substring(int, int)} quando o par&acirc;metro
+	 * <code><strong>reverso</strong></code> est&aacute; com o valor
+	 * <code><strong>false</strong></code> sem o overhead das
+	 * valida&ccedil;&otilde;es feitas em ambos os m&eacute;todos supracitados
+	 * levando em considera&ccedil;&atilde;o a &uacute;ltima posi&ccedil;&atilde;o
+	 * do par&acirc;metro <code><strong>caracterSeparacao</strong></code> obtido da
+	 * {@link String} retornada pelo m&eacute;todo {@link Path#toString()} em cima
+	 * de {@link Path#getFileName()}.
+	 *
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 * @param reverso
+	 *            O intr&iacute;nseco <code><strong>boolean</strong></code> que
+	 *            determinar&aacute; se buscaremos at&eacute; acharmos a
+	 *            &uacute;ltima representa&ccedil;&atilde;o do caracter passado por
+	 *            par&acirc;metro <code><strong>caracterSeparacao</strong></code> ou
+	 *            a partir do mesmo conforme documenta&ccedil;&atilde;o do
+	 *            pr&oacute;prio m&eacute;todo.
+	 * @param caracterSeparacao
+	 *            O intr&iacute;nseco <code><strong>char</strong></code> contendo o
+	 *            valor do caracter que dever&aacute; ter sua &uacute;ltima
+	 *            ocorr&ecirc;ncia buscado na {@link String} obtida atrav&eacute;s
+	 *            do retorno do m&eacute;todo {@link Path#toString()} em cima de
+	 *            {@link Path#getFileName()} conforme documenta&ccedil;&atilde;o do
+	 *            pr&oacute;prio m&eacute;todo.
+	 *
+	 * @return Objeto do tipo {@link String} contendo a
+	 *         {@link String#substring(int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>true</strong></code> ou a
+	 *         {@link String#substring(int, int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>false</strong></code> da {@link String} retornada pelo
+	 *         m&eacute;todo {@link Path#toString()} em cima de
+	 *         {@link Path#getFileName()}.
+	 *
+	 * @see String
+	 * @see String#lastIndexOf(int)
+	 * @see String#substring(int)
+	 * @see String#substring(int, int)
+	 * @see Path
+	 * @see Path#getFileName()
+	 * @see Path#toString()
+	 */
+	private static String substring(final Path caminho, final boolean reverso, final char caracterSeparacao) {
+		final String nomeArquivo = caminho.getFileName().toString();
+		final int posicaoUltimoPonto = nomeArquivo.lastIndexOf(Character.isValidCodePoint(caracterSeparacao) ? caracterSeparacao : '.');
+		final char[] nomeArquivoAsCharArray = nomeArquivo.toCharArray();
+		return reverso ? new String(nomeArquivoAsCharArray, posicaoUltimoPonto, nomeArquivoAsCharArray.length - posicaoUltimoPonto) : new String(nomeArquivoAsCharArray, 0, posicaoUltimoPonto);
+	}
+
+	/**
+	 * Sobrecarga para o m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#isExtensaoValida(String)
+	 * isExtensaoValida(String)} passando o par&acirc;metro
+	 * <code><strong>caminho</strong></code> do tipo {@link Path} contendo a
+	 * representa&ccedil;&atilde;o do caminho absoluto de um arquivo f&iacute;sico
+	 * ou de seu nome, que ser&aacute; previamente utilizado pelo m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(Path)
+	 * recuperarExtensaoArquivo(Path)} de maneira a retornar apenas a
+	 * extens&atilde;o contida no par&acirc;metro deste m&eacute;todo em si. Tal
+	 * retorno sim, ser&aacute; passado para o m&eacute;todo
+	 * {@link ExecutaRequisicaoSOAP#isExtensaoValida(String)
+	 * isExtensaoValida(String)}.
+	 *
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 *
+	 * @return O intr&iacute;nseco <code><strong>boolean</strong></code> contendo o
+	 *         valor <code><strong>true</strong></code> caso o valor do
+	 *         par&acirc;metro <code><strong>extensao</strong></code> seja igual
+	 *         &agrave constante {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING
+	 *         EXTENSAO_DOING}, {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE
+	 *         EXTENSAO_DONE} ou {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE
+	 *         EXTENSAO_DONE} ou com o valor <code><strong>false</strong></code>
+	 *         caso contr&aacute;rio.
+	 *
+	 * @see Path
+	 * @String
+	 * @see ExecutaRequisicaoSOAP#isExtensaoValida(String) isExtensaoValida(String)
+	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(Path)
+	 *      recuperarExtensaoArquivo(Path)
+	 */
+	private static boolean isExtensaoValida(final Path caminho) {
+		return ExecutaRequisicaoSOAP.isExtensaoValida(ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(caminho));
+	}
+
+	/**
+	 * M&eacute;todo respons&aacute;vel por retornar o intr&iacute;nseco
+	 * <code><strong>boolean</strong></code> contendo o valor
+	 * <code><strong>true</strong></code> caso o valor do par&acirc;metro
+	 * <code><strong>extensao</strong></code> seja igual &agrave constante
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING},
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE} ou
+	 * {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE} ou com o valor
+	 * <code><strong>false</strong></code> caso contr&aacute;rio.
+	 *
+	 * @param extensao
+	 *            Objeto do tipo {@link String} contendo o valor da extens&atilde;o
+	 *            de arquivo a ser testada.
+	 *
+	 * @return O intr&iacute;nseco <code><strong>boolean</strong></code> contendo o
+	 *         valor <code><strong>true</strong></code> caso o valor do
+	 *         par&acirc;metro <code><strong>extensao</strong></code> seja igual
+	 *         &agrave constante {@link ExecutaRequisicaoSOAP#EXTENSAO_DOING
+	 *         EXTENSAO_DOING}, {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE
+	 *         EXTENSAO_DONE} ou {@link ExecutaRequisicaoSOAP#EXTENSAO_DONE
+	 *         EXTENSAO_DONE} ou com o valor <code><strong>false</strong></code>
+	 *         caso contr&aacute;rio.
+	 *
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
+	 */
+	private static boolean isExtensaoValida(final String extensao) {
+		return extensao.endsWith(ExecutaRequisicaoSOAP.EXTENSAO_DOING) || extensao.endsWith(ExecutaRequisicaoSOAP.EXTENSAO_DONE) || extensao.endsWith(ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE);
 	}
 }
