@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
+import java.io.UncheckedIOException;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -344,11 +345,9 @@ public class ExecutaRequisicaoSOAP {
 		try {
 			return ExecutaRequisicaoSOAP.iniciarAquisicaoBloqueioArquivoControle().getChannel().lock(0, Long.MAX_VALUE, false);
 		} catch (final IOException e) {
-			ExecutaRequisicaoSOAP.LOGGER.error("Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
-
-			// TODO: Verificar se não é uma falha de arquitetura o return null após sair.
-			Runtime.getRuntime().exit(-1);
-			return null;
+			final String mensagemErro = "Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage();
+			ExecutaRequisicaoSOAP.LOGGER.error(mensagemErro, e);
+			throw new UncheckedIOException(mensagemErro, e);
 		}
 	}
 
