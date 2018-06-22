@@ -1,15 +1,12 @@
 package br.com.pgioseffi.requisicoes.soap;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.RandomAccessFile;
-import java.io.Writer;
 import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
@@ -489,13 +486,10 @@ public class ExecutaRequisicaoSOAP {
 					// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
 					ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
 
-					// Escreve arquivo de resposta do tipo RESPONSE num stream e utiliza um writer
-					// para criar o arquivo propriamente dito.
-					try (OutputStream out = Files.newOutputStream(Paths.get(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
-							StandardOpenOption.WRITE); Writer writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
+					try (ByteArrayOutputStream out = new ByteArrayOutputStream();) {
 						response.writeTo(out);
-
-						writer.flush();
+						Files.write(ExecutaRequisicaoSOAP.DIRETORIO.resolve(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
+								out.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 					}
 				} catch (final IOException | SOAPException | RuntimeException e) {
 					ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisi\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
