@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Locale;
@@ -89,8 +90,6 @@ import org.apache.log4j.Logger;
  * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
  * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
  * @see Runtime
- * @see Runtime#getRuntime()
- * @see Runtime#addShutdownHook(Thread)
  * @see Thread
  * @see Runnable
  * @see ScheduledExecutorService
@@ -98,19 +97,34 @@ import org.apache.log4j.Logger;
  * @see MimeHeaders
  * @see Properties
  * @see Files
- * @see Files#list(Path)
- * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
- *      Files.isRegularFile(Path, LinkOption...)
- * @see Files#newBufferedReader(Path, java.nio.charset.Charset)
- *      Files.newBufferedReader(Path, Charset)
  * @see Path
  * @see Stream
- * @see Stream#collect(java.util.stream.Collector) Stream.collect(Collector)
  * @see Collectors
- * @see Collectors#toCollection(java.util.function.Supplier)
- *      Collectors.toCollection(Supplier)
+ * @see Locale
+ * @see NumberFormat
  */
 public class ExecutaRequisicaoSOAP {
+
+	/**
+	 * Objeto {@link Locale} padr&atilde;o para ser usado pelo rob&ocirc; indicando
+	 * idioma portugu&ecirc;s e pa&iacute;s Brasil.
+	 *
+	 * @see Locale
+	 * @see Locale#Locale(String, String)
+	 */
+	private static final Locale LOCALE_DEFAULT = new Locale("pt", "BR");
+
+	/**
+	 * Objeto {@link NumberFormat} associado ao
+	 * {@link ExecutaRequisicaoSOAP#LOCALE_DEFAULT LOCALE_DEFAULT} para ser
+	 * utilizado em formata&ccedil;&atilde;o de mensagens que envolvam
+	 * n&uacute;meros.
+	 *
+	 * @see ExecutaRequisicaoSOAP#LOCALE_DEFAULT LOCALE_DEFAULT
+	 * @see NumberFormat
+	 * @see NumberFormat#getInstance(Locale)
+	 */
+	private static final NumberFormat NF_DEFAULT = NumberFormat.getInstance(ExecutaRequisicaoSOAP.LOCALE_DEFAULT);
 
 	/**
 	 * <p>
@@ -181,6 +195,8 @@ public class ExecutaRequisicaoSOAP {
 			// Sai da execução sinalizando erro.
 			Runtime.getRuntime().exit(-1);
 		}
+
+		ExecutaRequisicaoSOAP.NF_DEFAULT.setMaximumFractionDigits(3);
 	}
 
 	/**
@@ -268,7 +284,7 @@ public class ExecutaRequisicaoSOAP {
 	 */
 	private static RandomAccessFile iniciarAquisicaoBloqueioArquivoControle() throws IOException {
 		final String mensagem = "Job em execu\u00E7\u00E3o pelo usu\u00E1rio "
-				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(Locale.getDefault());
+				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(ExecutaRequisicaoSOAP.LOCALE_DEFAULT);
 
 		if (Files.exists(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO)) {
 			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
@@ -404,8 +420,6 @@ public class ExecutaRequisicaoSOAP {
 	 * @see Files#list(Path)
 	 * @see Files#isRegularFile(Path, java.nio.file.LinkOption...)
 	 *      Files.isRegularFile(Path, LinkOption...)
-	 * @see Files#newBufferedReader(Path, java.nio.charset.Charset)
-	 *      Files.newBufferedReader(Path, Charset)
 	 * @see Path
 	 * @see Stream
 	 * @see Stream#collect(java.util.stream.Collector) Stream.collect(Collector)
@@ -414,10 +428,11 @@ public class ExecutaRequisicaoSOAP {
 	 *      Collectors.toCollection(Supplier)
 	 */
 	private static void executarRequisicao() {
-		ExecutaRequisicaoSOAP.LOGGER.info("Entrando na rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: " + DateFormatUtils.format(System.currentTimeMillis(), "dd/MM/yyyy HH:mm:ss.SSS"));
+		final long inicio = System.currentTimeMillis();
+		ExecutaRequisicaoSOAP.LOGGER.info("In\u00EDcio da rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: " + DateFormatUtils.format(inicio, "dd/MM/yyyy HH:mm:ss.SSS"));
 
-		try (final Stream<Path> arquivos = Files.list(ExecutaRequisicaoSOAP.DIRETORIO)
-				.filter(path -> Files.isRegularFile(path) && ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(path).endsWith(ExecutaRequisicaoSOAP.EXTENSAO_PENDING.toLowerCase(Locale.getDefault())))) {
+		try (final Stream<Path> arquivos = Files.list(ExecutaRequisicaoSOAP.DIRETORIO).filter(path -> Files.isRegularFile(path)
+				&& ExecutaRequisicaoSOAP.recuperarExtensaoArquivo(path).endsWith(ExecutaRequisicaoSOAP.EXTENSAO_PENDING.toLowerCase(ExecutaRequisicaoSOAP.LOCALE_DEFAULT)))) {
 			final Collection<Path> arquivosAsCollection = arquivos.collect(Collectors.toCollection(ArrayList::new));
 			ExecutaRequisicaoSOAP.LOGGER
 					.info("VERIFICANDO SE EXISTEM ARQUIVOS ELEG\u00CDVEIS PARA A ROTINA DE EXECU\u00C7\u00C3O DA REQUISI\u00C7\u00C3O SOAP.\nQuantidade de arquivo(s) para processar: "
@@ -486,7 +501,7 @@ public class ExecutaRequisicaoSOAP {
 					// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
 					ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
 
-					try (ByteArrayOutputStream out = new ByteArrayOutputStream();) {
+					try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 						response.writeTo(out);
 						Files.write(ExecutaRequisicaoSOAP.DIRETORIO.resolve(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
 								out.toByteArray(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
@@ -495,6 +510,10 @@ public class ExecutaRequisicaoSOAP {
 					ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao executar requisi\u00E7\u00E3o SOAP. ERRO: " + e.getMessage(), e);
 				}
 			}
+
+			final long fim = System.currentTimeMillis();
+			ExecutaRequisicaoSOAP.LOGGER.info("Fim da rotina de execu\u00E7\u00E3o da requisi\u00E7\u00E3o SOAP em: " + DateFormatUtils.format(fim, "dd/MM/yyyy HH:mm:ss.SSS") + ". Foram consumidos "
+					+ ExecutaRequisicaoSOAP.NF_DEFAULT.format((fim - inicio) / 1000D) + " segundos.");
 		} catch (final IOException e) {
 			ExecutaRequisicaoSOAP.LOGGER.error("Erro inesperado ao buscar arquivos do diret\u00F3rio " + ExecutaRequisicaoSOAP.DIRETORIO + ". ERRO: " + e.getMessage(), e);
 		}
