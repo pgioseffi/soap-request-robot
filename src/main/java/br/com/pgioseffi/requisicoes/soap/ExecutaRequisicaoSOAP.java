@@ -265,14 +265,14 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @throws IOException
 	 *             Exce&ccedil;&atilde;o lan&ccedil;ada em uma das tr&ecirc;s
-	 *             hip&oacute;ses:
+	 *             hip&oacute;teses:
 	 *             <ol>
 	 *             <li>Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#createDirectory(Path, java.nio.file.attribute.FileAttribute...)
 	 *             Files.createDirectory(Path, FileAttribute...)};</li>
 	 *             <li>Lan&ccedil;ada pelo m&eacute;todo
 	 *             {@link Files#write(Path, byte[], java.nio.file.OpenOption...)
-	 *             Files.write(Path, byte[], OpenOption...)};</li>
+	 *             Files.write(Path, byte[], OpenOption...)}; ou</li>
 	 *             <li>O {@link RandomAccessFile#RandomAccessFile(File, String)
 	 *             construtor} da classe {@link RandomAccessFile}.</li>
 	 *             </ol>
@@ -331,6 +331,31 @@ public class ExecutaRequisicaoSOAP {
 	 *         bloqueio do arquivo de controle de execu&ccedil;&atilde;o por
 	 *         usu&aacute;rio.
 	 *
+	 * @throws UncheckedIOException
+	 *             <p>
+	 *             Exce&ccedil;&atilde;o lan&ccedil;ada em uma das duas
+	 *             hip&oacute;teses:
+	 *             </p>
+	 *             <p>
+	 *             <ol>
+	 *             <li>Se o m&eacute;todo
+	 *             {@link ExecutaRequisicaoSOAP#iniciarAquisicaoBloqueioArquivoControle()
+	 *             iniciarAquisicaoBloqueioArquivoControle()} lan&ccedil;ar uma
+	 *             {@link IOException}; ou</li>
+	 *             <li>Se o m&eacute;todo
+	 *             {@link java.nio.channels.FileChannel#lock(long, long, boolean)
+	 *             FileChannel.lock(long, long, boolean)} lan&ccedil;ar uma
+	 *             {@link IOException}.</li>
+	 *             </ol>
+	 *             </p>
+	 *             <p>
+	 *             Em ambos os casos a {@link IOException} &eacute; capturada e
+	 *             relan&ccedil;ada em uma {@link UncheckedIOException} de maneira a
+	 *             abortar a execu&ccedil;&atilde;o do rob&eocirc;, visto que o
+	 *             arquivo de controle de execu&ccedil;&atilde;o do rob&ocirc; deve
+	 *             existir e estar bloqueado, mas sem obrigar o tratamento da mesma.
+	 *             </p>
+	 *
 	 * @see ExecutaRequisicaoSOAP#iniciarAquisicaoBloqueioArquivoControle()
 	 *      iniciarAquisicaoBloqueioArquivoControle()
 	 * @see RandomAccessFile#getChannel()
@@ -341,7 +366,7 @@ public class ExecutaRequisicaoSOAP {
 	 * @see java.nio.channels.FileChannel#lock(long, long, boolean)
 	 *      FileChannel.lock(long, long, boolean)
 	 */
-	private static FileLock finalizarAquisicaoBloqueioArquivoControle() {
+	private static FileLock finalizarAquisicaoBloqueioArquivoControle() throws UncheckedIOException {
 		try {
 			return ExecutaRequisicaoSOAP.iniciarAquisicaoBloqueioArquivoControle().getChannel().lock(0, Long.MAX_VALUE, false);
 		} catch (final IOException e) {
@@ -534,13 +559,14 @@ public class ExecutaRequisicaoSOAP {
 	 *         caminho absoluto do arquivo a ser renomeado.
 	 *
 	 * @throws IOException
-	 *             Esta exce&ccedil;&atilde;o &eacute; lan&ccedil;ada por um dos
-	 *             dois motivos:
+	 *             Exce&ccedil;&atilde;o lan&ccedil;ada em uma das tr&ecirc;s
+	 *             hip&oacute;teses:
 	 *             <ol>
 	 *             <li>Pelo m&eacute;todo
 	 *             {@link Files#move(Path, Path, java.nio.file.CopyOption...)
 	 *             Files.move(Path, Path, CopyOption...)} e relan&ccedil;ada por
-	 *             este m&eacute;todo para que seja tratado por quem o chamou;</li>
+	 *             este m&eacute;todo para que seja tratado por quem o chamou;
+	 *             ou</li>
 	 *             <li>Caso seja passado no par&acirc;metro
 	 *             <code><strong>extensaoNova</strong></code> um valor que
 	 *             n&atilde;o esteja definido por uma das seguintes constantes
