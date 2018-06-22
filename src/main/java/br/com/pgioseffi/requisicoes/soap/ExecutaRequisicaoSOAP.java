@@ -343,7 +343,7 @@ public class ExecutaRequisicaoSOAP {
 	private static FileLock finalizarAquisicaoBloqueioArquivoControle() {
 		try {
 			return ExecutaRequisicaoSOAP.iniciarAquisicaoBloqueioArquivoControle().getChannel().lock(0, Long.MAX_VALUE, false);
-		} catch (final Throwable e) {
+		} catch (final IOException e) {
 			ExecutaRequisicaoSOAP.LOGGER.error("Erro ao escrever arquivo de controle de execu\u00E7\u00E3o. ERRO: " + e.getMessage(), e);
 
 			// TODO: Verificar se não é uma falha de arquitetura o return null após sair.
