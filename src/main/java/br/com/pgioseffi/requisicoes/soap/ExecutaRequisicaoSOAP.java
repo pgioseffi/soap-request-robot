@@ -406,7 +406,6 @@ public class ExecutaRequisicaoSOAP {
 		// Instrução para a JVM realizar os passos abaixo de exclusão de arquivos ao fim
 		// da execução do job.
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-
 			// Excluir arquivos do tipo done, response e doing (este caso não deve ocorrer)
 			// do diretório.
 			ExecutaRequisicaoSOAP.excluirArquivos();
@@ -430,7 +429,11 @@ public class ExecutaRequisicaoSOAP {
 		// exclusões de arquivos de hora em hora.
 		final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 		scheduler.scheduleAtFixedRate(() -> ExecutaRequisicaoSOAP.executarRequisicao(), 0, 5, TimeUnit.SECONDS);
-		scheduler.scheduleAtFixedRate(() -> ExecutaRequisicaoSOAP.excluirArquivos(), 0, 1, TimeUnit.HOURS);
+
+		// Iniciando cinco segundos depois do robô começar, pois os arquivos pending
+		// ainda não renomeados na fila na primeira execução eram excluídos (alguns sem
+		// dar tempo de executar).
+		scheduler.scheduleAtFixedRate(() -> ExecutaRequisicaoSOAP.excluirArquivos(), 5000, 1, TimeUnit.HOURS);
 
 		ExecutaRequisicaoSOAP.LOGGER.info("Atividade agendada em execu\u00E7\u00E3o a cada cinco segundos.");
 	}
