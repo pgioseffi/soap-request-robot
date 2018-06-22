@@ -412,6 +412,7 @@ public class ExecutaRequisicaoSOAP {
 			ExecutaRequisicaoSOAP.excluirArquivos();
 
 			try {
+				// TODO: Corrigir problema de não liberar o lock.
 				ExecutaRequisicaoSOAP.LOCK.release();
 
 				Files.delete(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO);
@@ -525,6 +526,7 @@ public class ExecutaRequisicaoSOAP {
 					// Renomeia arquivo de entrada para constar como feito através da extensão DONE.
 					ExecutaRequisicaoSOAP.renomearArquivo(doing, ExecutaRequisicaoSOAP.EXTENSAO_DONE);
 
+					// Escreve de fato no arquivo de resposta.
 					try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
 						response.writeTo(out);
 						Files.write(ExecutaRequisicaoSOAP.DIRETORIO.resolve(ExecutaRequisicaoSOAP.recuperarCaminhoArquivoSemExtensao(caminho) + ExecutaRequisicaoSOAP.EXTENSAO_RESPONSE),
