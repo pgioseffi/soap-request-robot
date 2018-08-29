@@ -285,7 +285,7 @@ public class ExecutaRequisicaoSOAP {
 	 */
 	private static RandomAccessFile iniciarAquisicaoBloqueioArquivoControle() throws IOException {
 		final String mensagem = "Job em execu\u00E7\u00E3o pelo usu\u00E1rio "
-				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO).toUpperCase(ExecutaRequisicaoSOAP.LOCALE_DEFAULT);
+				+ ExecutaRequisicaoSOAP.substring(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO, true, false, '.').toUpperCase(ExecutaRequisicaoSOAP.LOCALE_DEFAULT);
 
 		if (Files.exists(ExecutaRequisicaoSOAP.CAMINHO_ABSOLUTO_ARQUIVO_CONTROLE_EXECUCAO)) {
 			// Se o mesmo já existir, o robô já está sendo executado por um usuário. Log e
@@ -631,8 +631,6 @@ public class ExecutaRequisicaoSOAP {
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DOING EXTENSAO_DOING
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_DONE EXTENSAO_DONE
 	 * @see ExecutaRequisicaoSOAP#EXTENSAO_RESPONSE EXTENSAO_RESPONSE
-	 * @see ExecutaRequisicaoSOAP#recuperarExtensaoArquivo(Path)
-	 *      recuperarExtensaoArquivo(Path)
 	 * @see Files
 	 * @see Files#newDirectoryStream(Path, java.nio.file.DirectoryStream.Filter)
 	 *      Files.newDirectoryStream(Path, DirectoryStream.Filter)
@@ -730,8 +728,8 @@ public class ExecutaRequisicaoSOAP {
 
 	/**
 	 * Sobrecarga para o m&eacute;todo
-	 * {@link ExecutaRequisicaoSOAP#substring(Path, boolean, char) substring(Path,
-	 * boolean, char)} passando o par&acirc;metro
+	 * {@link ExecutaRequisicaoSOAP#substring(Path, boolean, boolean)
+	 * substring(Path, boolean, boolean)} passando o par&acirc;metro
 	 * <code><strong>caracterSeparacao</strong></code> do m&eacute;todo supracitado
 	 * com o valor <code><strong>&quot;.&quot;</strong></code> por padr&atilde;o.
 	 *
@@ -756,11 +754,51 @@ public class ExecutaRequisicaoSOAP {
 	 *         m&eacute;todo {@link Path#toString()} em cima de
 	 *         {@link Path#getFileName()}.
 	 *
-	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean, char) substring(Path,
-	 *      boolean, char)
+	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean, boolean) substring(Path,
+	 *      boolean, boolean)
 	 */
 	private static String substring(final Path caminho, final boolean reverso) {
-		return ExecutaRequisicaoSOAP.substring(caminho, reverso, '.');
+		return ExecutaRequisicaoSOAP.substring(caminho, reverso, true);
+	}
+
+	/**
+	 * @param caminho
+	 *            Objeto do tipo {@link Path} contendo a representa&ccedil;&atilde;o
+	 *            do caminho absoluto de um arquivo f&iacute;sico ou de seu nome.
+	 * @param reverso
+	 *            O intr&iacute;nseco <code><strong>boolean</strong></code> que
+	 *            determinar&aacute; se buscaremos at&eacute; acharmos a
+	 *            &uacute;ltima representa&ccedil;&atilde;o do caracter passado por
+	 *            par&acirc;metro <code><strong>caracterSeparacao</strong></code> ou
+	 *            a partir do mesmo conforme documenta&ccedil;&atilde;o do
+	 *            pr&oacute;prio m&eacute;todo.
+	 * @param incluiCaracterSeparacao
+	 *            O intr&iacute;nseco <code><strong>boolean</strong></code> que
+	 *            determinar&aacute; se incluiremos ou n&atilde;o no objeto
+	 *            {@link String} de retorno o intr&iacute;nseco
+	 *            <code><strong>char</strong></code> passado no par&acirc;metro
+	 *            <code><strong>caracterSeparacao</strong></code>.
+	 * 
+	 * @return Objeto do tipo {@link String} contendo a
+	 *         {@link String#substring(int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>true</strong></code> ou a
+	 *         {@link String#substring(int, int)} quando o par&acirc;metro
+	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
+	 *         <code><strong>false</strong></code> da {@link String} retornada pelo
+	 *         m&eacute;todo {@link Path#toString()} em cima de
+	 *         {@link Path#getFileName()}, incluindo ou n&atilde;o o
+	 *         intr&iacute;nseco <code><strong>char</strong></code> passado com o
+	 *         valor padr&atilde;o <code><strong>&quot;.&quot;</strong></code> de
+	 *         acordo com o valor do par&acirc;metro
+	 *         <code><strong>incluiCaracterSeparacao</strong></code> do
+	 *         intr&iacute;nseco <code><strong>boolean</strong></code>.
+	 *
+	 * @see ExecutaRequisicaoSOAP#substring(Path, boolean, boolean, char)
+	 *      substring(Path, boolean, boolean, char)
+	 */
+	private static String substring(final Path caminho, final boolean reverso, final boolean incluiCaracterSeparacao) {
+		return ExecutaRequisicaoSOAP.substring(caminho, reverso, incluiCaracterSeparacao, '.');
 	}
 
 	/**
@@ -787,6 +825,12 @@ public class ExecutaRequisicaoSOAP {
 	 *            par&acirc;metro <code><strong>caracterSeparacao</strong></code> ou
 	 *            a partir do mesmo conforme documenta&ccedil;&atilde;o do
 	 *            pr&oacute;prio m&eacute;todo.
+	 * @param incluiCaracterSeparacao
+	 *            O intr&iacute;nseco <code><strong>boolean</strong></code> que
+	 *            determinar&aacute; se incluiremos ou n&atilde;o no objeto
+	 *            {@link String} de retorno o intr&iacute;nseco
+	 *            <code><strong>char</strong></code> passado no par&acirc;metro
+	 *            <code><strong>caracterSeparacao</strong></code>.
 	 * @param caracterSeparacao
 	 *            O intr&iacute;nseco <code><strong>char</strong></code> contendo o
 	 *            valor do caracter que dever&aacute; ter sua &uacute;ltima
@@ -803,7 +847,12 @@ public class ExecutaRequisicaoSOAP {
 	 *         <code><strong>reverso</strong></code> est&aacute; com o valor
 	 *         <code><strong>false</strong></code> da {@link String} retornada pelo
 	 *         m&eacute;todo {@link Path#toString()} em cima de
-	 *         {@link Path#getFileName()}.
+	 *         {@link Path#getFileName()}, incluindo ou n&atilde;o o
+	 *         intr&iacute;nseco <code><strong>char</strong></code> passado no
+	 *         par&acirc;metro <code><strong>caracterSeparacao</strong></code> de
+	 *         acordo com o valor do par&acirc;metro
+	 *         <code><strong>incluiCaracterSeparacao</strong></code> do
+	 *         intr&iacute;nseco <code><strong>boolean</strong></code>.
 	 *
 	 * @see String
 	 * @see String#lastIndexOf(int)
@@ -813,11 +862,33 @@ public class ExecutaRequisicaoSOAP {
 	 * @see Path#getFileName()
 	 * @see Path#toString()
 	 */
-	private static String substring(final Path caminho, final boolean reverso, final char caracterSeparacao) {
+	private static String substring(final Path caminho, final boolean reverso, final boolean incluiCaracterSeparacao, final char caracterSeparacao) {
 		final String nomeArquivo = caminho.getFileName().toString();
 		final int posicaoUltimoPonto = nomeArquivo.lastIndexOf(Character.isValidCodePoint(caracterSeparacao) ? caracterSeparacao : '.');
 		final char[] nomeArquivoAsCharArray = nomeArquivo.toCharArray();
-		return reverso ? new String(nomeArquivoAsCharArray, posicaoUltimoPonto, nomeArquivoAsCharArray.length - posicaoUltimoPonto) : new String(nomeArquivoAsCharArray, 0, posicaoUltimoPonto);
+
+		final int novaPosicao = posicaoUltimoPonto + 1;
+
+		return reverso
+				? incluiCaracterSeparacao ? new String(nomeArquivoAsCharArray, posicaoUltimoPonto, nomeArquivoAsCharArray.length - posicaoUltimoPonto)
+						: new String(nomeArquivoAsCharArray, novaPosicao, nomeArquivoAsCharArray.length - novaPosicao)
+				: new String(nomeArquivoAsCharArray, 0, incluiCaracterSeparacao ? novaPosicao : posicaoUltimoPonto);
+
+		// if (reverso) {
+		// if (incluiCaracterSeparacao) {
+		// return new String(nomeArquivoAsCharArray, posicaoUltimoPonto,
+		// nomeArquivoAsCharArray.length - posicaoUltimoPonto);
+		// }
+		//
+		// return new String(nomeArquivoAsCharArray, novaPosicao,
+		// nomeArquivoAsCharArray.length - novaPosicao);
+		// }
+		//
+		// if (incluiCaracterSeparacao) {
+		// return new String(nomeArquivoAsCharArray, 0, posicaoUltimoPonto + 1);
+		// }
+		//
+		// return new String(nomeArquivoAsCharArray, 0, posicaoUltimoPonto);
 	}
 
 	/**
