@@ -36,7 +36,8 @@ import javax.xml.soap.SOAPMessage;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateFormatUtils;
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * <p>
@@ -171,7 +172,7 @@ public class ExecutaRequisicaoSOAP {
 	 *
 	 * @see Logger
 	 */
-	private static final Logger LOGGER = Logger.getLogger(ExecutaRequisicaoSOAP.class);
+	private static final Logger LOGGER = LogManager.getLogger(ExecutaRequisicaoSOAP.class);
 
 	/**
 	 * Constante utilizada para manter o {@link Properties arquivo de propriedades}
