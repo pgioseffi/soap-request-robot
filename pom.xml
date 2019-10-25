@@ -5,6 +5,7 @@
 	<groupId>br.com.pgioseffi</groupId>
 	<artifactId>soap-request-robot</artifactId>
 	<version>1.0.0</version>
+	<name>Robô de Requisições SOAP</name>
 	<description>Robô que lê arquivos XML SOAP de um determinado diretório, executa a requisição e guarda a resposta.</description>
 
 	<properties>
@@ -15,21 +16,27 @@
 
 	<dependencies>
 		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>2.12.1</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
-			<version>3.7</version>
+			<version>3.9</version>
 		</dependency>
 
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
-			<version>1.11</version>
+			<version>1.13</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-support</artifactId>
+			<version>5.2.0.RELEASE</version>
 		</dependency>
 	</dependencies>
 
@@ -109,7 +116,6 @@
 		</plugins>
 	</build>
 
-	<name>Robô de Requisições SOAP</name>
 	<scm>
 		<developerConnection>Philippe Gioseffi</developerConnection>
 		<url>https://github.com/pgioseffi/soap-request-robot.git</url>
